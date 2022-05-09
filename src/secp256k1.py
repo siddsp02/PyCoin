@@ -423,7 +423,7 @@ def verify(signature: tuple[int, int], pubkey: Point, message: bytes) -> bool:
     if point == (0, 1, 0):
         return False
     (x, y) = point.affine()  # type: ignore
-    return True if r == x % n else False
+    return r == x % n
 
 
 def encode(signature: tuple[int, int]) -> bytes:
