@@ -84,7 +84,7 @@ class AffinePoint(NamedTuple):
         (x, y) = self
         if y is None:
             return False
-        return (pow(x, 3, p) + b) % p == pow(y, 2, p)
+        return (x*x*x + b) % p == y*y % p
 
     def __bytes__(self) -> bytes:
         """Returns the bytes of the point in uncompressed form, using SEC Encoding.
@@ -382,7 +382,7 @@ def tonelli(n: int, p: int) -> int | None:
         # and t**(2**i) % p == 1.
         i = next(i for i in range(m) if pow(t, 1 << i, p) == 1)
         b = pow(c, 1 << (m-i-1), p)
-        b2 = pow(b, 2, p)
+        b2 = b*b % p
         m, c, t, r = i, b2, t*b2 % p, r*b % p
     return r if t == 1 else 0
 
@@ -402,7 +402,7 @@ def generate(privkey: int, message: bytes = b"") -> tuple[int, int]:
         k = random.randrange(1, n)
         (x, y) = (k * G).affine()  # type: ignore
         r = x % n
-        s = pow(k, -1, n) * (z + r * privkey) % n
+        s = pow(k, -1, n) * (z + r*privkey) % n
     return (r, s)
 
 
