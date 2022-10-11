@@ -20,6 +20,7 @@ import random
 import struct
 import time
 from typing import NamedTuple
+from typing_extensions import Self
 
 from .utils import bytelength, extract_bits, sha256d
 
@@ -40,11 +41,11 @@ class AffinePoint(NamedTuple):
     y: int
 
     @classmethod
-    def infinity(cls) -> AffinePoint:
-        return AffinePoint(None, None) # type: ignore
+    def infinity(cls) -> Self:
+        return cls(None, None) # type: ignore
 
     @classmethod
-    def from_int(cls, value: int) -> AffinePoint:
+    def from_int(cls, value: int) -> Self:
         """Returns a new Point on the secp256k1 curve when given its integer value."""
         bits = value.bit_length()
         length = 33 if bits <= 272 else 65
@@ -52,7 +53,7 @@ class AffinePoint(NamedTuple):
         return cls.from_bytes(val_bytes)
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> AffinePoint:
+    def from_bytes(cls, data: bytes) -> Self:
         """Returns a new Point on the secp256k1 curve when given binary data.
         In this case, we unpack our data with big-endian as our byte format,
         since that is the network standard.
@@ -97,7 +98,7 @@ class AffinePoint(NamedTuple):
     def __str__(self) -> str:
         return f"{*self,}"
 
-    def __neg__(self) -> AffinePoint:
+    def __neg__(self) -> Self:
         """Returns the negated value of a Point on the secp256k1 curve.
         The negated value of a point is a point such that the original
         point added to it results in the point at infinity. In the case
@@ -118,7 +119,7 @@ class AffinePoint(NamedTuple):
         (x, y) = self
         return AffinePoint(x, -y)
 
-    def __add__(self, other: AffinePoint | tuple[int, int]) -> AffinePoint:
+    def __add__(self, other: Self | tuple[int, int]) -> Self:
         """Returns the result of adding two points on the secp256k1 curve.
 
         When adding two points, a regular tuple is also considered as a
@@ -159,7 +160,7 @@ class AffinePoint(NamedTuple):
 
     __radd__ = __add__
 
-    def __mul__(self, other: int) -> AffinePoint:
+    def __mul__(self, other: int) -> Self:
         """Elliptic curve multiplication of a point by a scalar value.
 
         Point multiplication is done by repeatedly doubling and adding
@@ -194,22 +195,22 @@ class Point(NamedTuple):
     z: int = 1  # For affine coordinate conversion.
     
     @classmethod
-    def infinity(cls) -> Point:
-        return Point(0, 1, 0)
+    def infinity(cls) -> Self:
+        return cls(0, 1, 0)
 
     @classmethod
-    def from_affine(cls, point: AffinePoint) -> Point:
+    def from_affine(cls, point: AffinePoint) -> Self:
         return cls(point.x, point.y, 1)
 
     @classmethod
-    def from_int(cls, value: int) -> Point:
+    def from_int(cls, value: int) -> Self:
         bits = value.bit_length()
         length = 33 if bits <= 272 else 65
         val_bytes = value.to_bytes(length, byteorder="big")
         return cls.from_bytes(val_bytes)
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> Point:
+    def from_bytes(cls, data: bytes) -> Self:
         new_point = AffinePoint.from_bytes(data)
         return Point.from_affine(new_point)
 
@@ -227,7 +228,7 @@ class Point(NamedTuple):
     def __str__(self) -> str:
         return f"{*self,}"
 
-    def __add__(self, other: Point) -> Point:
+    def __add__(self, other: Self) -> Self:
         """Addition of two projective/jacobian coordinate points using "add-2007-bl"
         algorithm. The code for point doubling was borrowed from the Bitcoin Core
         repository, as well as the WikiBooks reference.
@@ -283,7 +284,7 @@ class Point(NamedTuple):
 
     __radd__ = __add__
 
-    def __mul__(self, other: int) -> Point:
+    def __mul__(self, other: int) -> Self:
         """Elliptic curve multiplication of a point by a scalar value, using
         double-and-add.
 
