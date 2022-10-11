@@ -486,7 +486,7 @@ def decode(signature: bytes) -> tuple[int, int]:
 def generate_sigs(amount: int) -> list:
     cores = mp.cpu_count()
     msgs = [random.randbytes(10)] * amount
-    keys = [random.randrange(1, n) for _ in range(amount)]
+    keys = random.sample(range(1, n), k=amount)
     pubkeys = [k * G for k in keys]
     with mp.Pool() as pool:
         sigs = pool.starmap(generate, zip(keys, msgs), chunksize=amount // cores)
