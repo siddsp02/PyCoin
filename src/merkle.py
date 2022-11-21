@@ -25,7 +25,7 @@ def pairs(values: Sequence[bytes]) -> Iterator[bytes]:
     evens, odds = values[0::2], values[1::2]
     longest = max(evens, odds, key=len)
     last = longest[-1]
-    return zip_longest(evens, odds, fillvalue=last)
+    return zip_longest(evens, odds, fillvalue=last)  # type: ignore
 
 
 # Hashing multiple pairs maybe computationally expensive,
