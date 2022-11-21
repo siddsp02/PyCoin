@@ -251,7 +251,7 @@ class Point(NamedTuple):
         if self == other:
             (x, y, z) = self
             if y == 0:
-                return Point.infinity()
+                return Point(0, 1, 0)
             y_2 = y*y % p
             y_4 = y_2*y_2 % p
             x_2 = x*x % p
@@ -300,7 +300,7 @@ class Point(NamedTuple):
             - https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication
         """
         mask, bits = 1, other.bit_length() - 1
-        tmp, res = self, Point.infinity()
+        tmp, res = self, Point(0, 1, 0)
         for _ in range(bits + 1):
             if other & mask:
                 res += tmp
@@ -509,9 +509,6 @@ def verify_sigs(params: list) -> list:
 # verification rate from ~50/s to ~2,000/s using Projective
 # coordinates instead of affine coordinates, as well as
 # parallel processing.
-# With GMP, you can expect a speedup by at least an order
-# of magnitude, so somewhere in the thousands of transactions
-# per second range on a single core.
 
 if __name__ == "__main__":
     # Check that things are working as intended.

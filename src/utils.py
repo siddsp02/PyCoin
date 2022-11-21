@@ -20,10 +20,6 @@ def swap_ordering(hexstr: str) -> str:
     return rbytes.hex()
 
 
-def int_to_vint(v: int) -> int:
-    ...
-
-
 def datetime_to_hex(
     date: datetime, prefixed: bool = False, reverse: bool = False
 ) -> str:
