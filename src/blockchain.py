@@ -1,7 +1,4 @@
-"""Blockchain related datatypes (includes transactions and blocks).
-
-Module is still a WIP, so not finished, yet.
-"""
+"""Blockchain related datatypes (includes transactions and blocks)."""
 
 
 from __future__ import annotations
@@ -13,20 +10,16 @@ from decimal import Decimal
 from functools import cached_property
 from typing import NamedTuple, TypeVar
 
+from ecdsa import encode
 from header import difficulty
 from merkle import hash_tree
-from secp256k1 import encode
 from utils import sha256d
 
-T = TypeVar("T")
+_T = TypeVar("_T")
 
 
 # Dataclasses could be used here, but for the purpose of having more
 # fine-grained control over behaviour, they have been avoided.
-
-
-class CompactSizeUInt(int):
-    ...
 
 
 class SigScript:
@@ -103,31 +96,7 @@ class TxOut(NamedTuple):
 
 @dataclass
 class Tx:
-    """A transaction on the Bitcoin network. Consists of signed inputs,
-    and outputs. On average, every input is roughly 148 bytes, and there
-    are on average 2 inputs per transaction, so transaction validation
-    benchmarks can be very roughly calculated by taking the signature
-    verification rate and dividing it by two.
-
-    As an example, if our machine was able to verify signatures using
-    ECDSA at a rate of 1,000 signature verifications per second, then
-    our transaction validation rate would be roughly 500 transactions
-    per second (assuming no other overhead). In reality, this figure
-    is a lot smaller.
-
-    RIPEMD160 is also used in hashing, but the overhead can be ignored.
-
-    When converted to a C struct, is equivalent to:
-    ```
-    struct Tx {
-        uint32_t version,     // version (always 0x1)
-        size_t in_count,      // no. inputs
-        TxIn *inputs,         // inputs array
-        size_t out_count,     // no. outputs
-        TxOut *outputs        // outputs array
-        uint32_t locktime     // locktime
-    };
-    ```
+    """A transaction on the Bitcoin network.
 
     References:
         - https://developer.bitcoin.org/reference/transactions.html
@@ -211,12 +180,6 @@ class BlockHeader(NamedTuple):
 
 
 class Block:
-    """The blockchain itself is essentially a very large linked-list, so the
-    latest block/entry in the ledger can be thought of as the blockchain itself,
-    with each node "block" acting as a node that references the previous and next
-    blocks, similar to a doubly-linked list.
-    """
-
     def __init__(
         self,
         version: int = 0x1,
@@ -320,9 +283,11 @@ class Block:
 
 
 def projected_difficulty() -> int:
-    """Bitcoin Difficulty Adjustment Algorithm. Works by calculating
-    the simple moving average of the last 2016 blocks, and adjusting
-    the difficulty based on the average solve time."""
+    """Bitcoin Difficulty Adjustment Algorithm.
+
+    Works by calculating the simple moving average of the last 2016 blocks,
+    and adjusting the difficulty based on the average solve time.
+    """
     floor_diff = 1
     return 1
 
