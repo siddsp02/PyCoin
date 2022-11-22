@@ -1,16 +1,8 @@
-from src.secp256k1 import (
-    AffinePoint,
-    Point,
-    decode,
-    encode,
-    generate,
-    jacobi,
-    tonelli,
-    verify,
-)
+from src.secp256k1 import AffinePoint, Point, jacobi, tonelli
 
 
 def test_point_addition() -> None:
+    
     assert False
 
 
@@ -42,9 +34,9 @@ def test_der_signature_decoding() -> None:
     assert False
 
 
-def test_jacobi_symbol() -> None:
+def test_jacobi() -> None:
     assert False
 
 
-def test_tonelli_shanks() -> None:
+def test_tonelli() -> None:
     assert False
