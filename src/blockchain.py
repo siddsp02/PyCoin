@@ -11,7 +11,7 @@ from functools import cached_property
 from typing import NamedTuple, TypeVar
 
 from ecdsa import encode
-from header import difficulty
+from miner import difficulty
 from merkle import hash_tree
 from utils import sha256d
 
