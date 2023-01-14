@@ -7,7 +7,10 @@ from functools import lru_cache
 from itertools import starmap, zip_longest
 from typing import Iterable, Iterator, Literal, Sequence, TypeVar
 
-from .utils import sha256d
+try:
+    from .utils import sha256d
+except ImportError:
+    from utils import sha256d
 
 Direction = Literal["left", "right"]
 ProofElement = tuple[Direction, bytes]

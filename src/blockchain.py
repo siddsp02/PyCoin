@@ -10,10 +10,16 @@ from decimal import Decimal
 from functools import cached_property
 from typing import NamedTuple, TypeVar
 
-from ecdsa import encode
-from miner import difficulty
-from merkle import hash_tree
-from utils import sha256d
+try:
+    from .ecdsa import encode
+    from .miner import difficulty
+    from .merkle import hash_tree
+    from .utils import sha256d
+except ImportError:
+    from ecdsa import encode
+    from miner import difficulty
+    from merkle import hash_tree
+    from utils import sha256d
 
 _T = TypeVar("_T")
 

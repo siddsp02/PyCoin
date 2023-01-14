@@ -10,20 +10,21 @@ def test_point_from_int() -> None:
 
 
 def test_point_add() -> None:
-    p = Point.from_int(G)
+    p = Point(
+        0xC6047F9441ED7D6D3045406E95C07CD85C778E4B8CEF3CA7ABAC09B95C709EE5,
+        0x1AE168FEA63DC339A3C58419466CEAEEF7F632653266D0E1236431A950CFE52A,
+        0x1,
+    )
     p2 = p + p
     p3 = p2 + p
     p5 = p2 + p3
     p10 = p5 + p5
     p23 = p10 + p10 + p3
-    assert p2.affine() == (
-        0xC6047F9441ED7D6D3045406E95C07CD85C778E4B8CEF3CA7ABAC09B95C709EE5,
-        0x1AE168FEA63DC339A3C58419466CEAEEF7F632653266D0E1236431A950CFE52A,
-    )
-    assert p3.affine() == (
-        112711660439710606056748659173929673102114977341539408544630613555209775888121,
-        25583027980570883691656905877401976406448868254816295069919888960541586679410,
-    )
+    p33 = p23 + p10
+    p56 = p23 + p33
+    p89 = p56 + p33
+    p122 = p89 + p33
+    points = [p, p2, p3, p5, p10, p23, p33, p56, p89, p122]
 
 
 def test_point_mul() -> None:

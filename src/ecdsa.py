@@ -5,8 +5,12 @@ import random
 import struct
 import time
 
-from secp256k1 import CURVE, Point
-from utils import bytelength, extract_bits, sha256d
+try:
+    from .secp256k1 import CURVE, Point
+    from .utils import bytelength, extract_bits, sha256d
+except ImportError:
+    from secp256k1 import CURVE, Point
+    from utils import bytelength, extract_bits, sha256d
 
 WORKERS = mp.cpu_count()
 
