@@ -17,7 +17,10 @@ import time
 from datetime import datetime
 from functools import partial, singledispatch
 
-from .utils import sha256d
+try:
+    from .utils import sha256d
+except ImportError:
+    from utils import sha256d
 
 UINT32_MAX = 0xFFFFFFFF
 WORKERS = mp.cpu_count()
@@ -65,11 +68,6 @@ def update_timestamp(block_header: bytearray) -> None:
     struct.pack_into("<I", block_header, 3, timestamp)
 
 
-def get_target(block_header: bytearray) -> int:
-    bits = struct.unpack_from("<I", block_header, 72)[0]
-    return target(bits)
-
-
 def parse_block_json(filename: str, fields: dict[str, int] | None = None) -> bytearray:
     """Parses a JSON file of a block, converting the values into a bytearray."""
 
@@ -87,8 +85,7 @@ def parse_block_json(filename: str, fields: dict[str, int] | None = None) -> byt
 
     @singledispatch
     def pack_bytes(value: str, offset: int = 0) -> None:
-        value = bytes.fromhex(value)[::-1]  # type: ignore
-        struct.pack_into("<32s", header, offset, value)
+        struct.pack_into("<32s", header, offset, bytes.fromhex(value)[::-1])
 
     @pack_bytes.register
     def _(value: int, offset: int = 0) -> None:
@@ -97,10 +94,9 @@ def parse_block_json(filename: str, fields: dict[str, int] | None = None) -> byt
     # Parse JSON fields, and pack the values
     # into the bytearray of the block header.
     with open(filename) as f:
-        block = json.load(f, object_pairs_hook=list)
-        for key, value in block:
-            if key in fields:
-                pack_bytes(value, fields[key])
+        block: dict = json.load(f)
+        for key in block.keys() & fields.keys():
+            pack_bytes(block[key], fields[key])
 
     return header
 

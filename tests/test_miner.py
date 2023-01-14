@@ -1,6 +1,78 @@
+import random
+import math
+
+from src.miner import *
+
+
+def test_verify() -> None:
+    # Block 125552
+    blk = bytearray.fromhex(
+        "01000000"
+        + "81cd02ab7e569e8bcd9317e2fe99f2de44d49ab2b8851ba4a308000000000000"
+        + "e320b6c2fffc8d750423db8b1eb942ae710e951ed797f7affc8892b0f1fc122b"
+        + "c7f5d74d"
+        + "f2b9441a"
+        + "42a14695"
+    )
+    assert verify(blk)
+    blk[20] += 1
+    assert not verify(blk)
+    blk = bytearray.fromhex("0" * 160)
+    assert not verify(blk)
+    for _ in range(255):
+        blk[0] += 1
+        assert not verify(blk)
+
+
+def test_parse_block_json() -> None:
+    blk = parse_block_json("example_blocks/125552.json")
+    assert blk == bytes.fromhex(
+        "01000000"
+        + "81cd02ab7e569e8bcd9317e2fe99f2de44d49ab2b8851ba4a308000000000000"
+        + "e320b6c2fffc8d750423db8b1eb942ae710e951ed797f7affc8892b0f1fc122b"
+        + "c7f5d74d"
+        + "f2b9441a"
+        + "42a14695"
+    )
+
+
+def test_difficulty() -> None:
+    assert difficulty(0x1B0404CB) == 16307.420938523983
+
+
+def test_target() -> None:
+    assert (
+        target(0x1B0404CB)
+        == 0x00000000000404CB000000000000000000000000000000000000000000000000
+    )
+
+
+def test_hashrate_from_difficulty() -> None:
+    hashrate = hashrate_from_difficulty(3.41e13)
+    assert math.isclose(hashrate, 2.68e20, rel_tol=0.25)
+
+
 def test_get_target() -> None:
-    assert False
+    block = bytes.fromhex(
+        "01000000"
+        + "81cd02ab7e569e8bcd9317e2fe99f2de44d49ab2b8851ba4a308000000000000"
+        + "e320b6c2fffc8d750423db8b1eb942ae710e951ed797f7affc8892b0f1fc122b"
+        + "c7f5d74d"
+        + "f2b9441a"
+        + "42a14695"
+    )
 
 
 def test_check_nonce() -> None:
-    assert False
+    block = bytearray.fromhex(
+        "01000000"
+        + "81cd02ab7e569e8bcd9317e2fe99f2de44d49ab2b8851ba4a308000000000000"
+        + "e320b6c2fffc8d750423db8b1eb942ae710e951ed797f7affc8892b0f1fc122b"
+        + "c7f5d74d"
+        + "f2b9441a"
+        + "42a14695"
+    )
+    # Check a large, but limited range of values.
+    for i in range(2_504_400_000, 2_504_445_000):
+        val = check_nonce(block, i)
+        assert val if i == 2504433986 else not val
