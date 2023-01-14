@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from hashlib import sha256
-from typing import Literal, TypeVar
+from typing import Iterator, Literal, TypeVar
 
 T = TypeVar("T")
 
@@ -48,10 +48,13 @@ def timestamp_to_hex(
     return ret
 
 
+def bits(n: int) -> Iterator[Bit]:
+    return map(int, f"{n:b}")  # type: ignore
+
+
 def vectorize_bits(n: int) -> list[Bit]:
     """Returns a list of the bits of an integer n."""
-    x = f"{n:b}"
-    return [int(bit) for bit in x]  # type: ignore
+    return list(bits(n))  # type: ignore
 
 
 def extract_bits(data: bytes, start: int = 0, end: int = 0) -> int:
