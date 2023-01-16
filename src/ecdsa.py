@@ -50,7 +50,7 @@ def verify(signature: tuple[int, int], pubkey: Point, message: bytes) -> bool:
     (r, s) = signature
     s1 = pow(s, -1, n)
     u1, u2 = (z * s1) % n, (r * s1) % n
-    (x, y, z) = point = u1 * G + u2 * pubkey
+    point = u1 * G + u2 * pubkey
     if point == (0, 1, 0):
         return False
     (x, y) = point.affine()  # type: ignore
@@ -138,8 +138,7 @@ def verify_sigs(params: list) -> list:
 # verification rate from ~50/s to ~2,000/s using Projective
 # coordinates instead of affine coordinates, as well as
 # parallel processing.
-
-if __name__ == "__main__":
+def main() -> None:
     # A small signature verification benchmark.
     amount = 10_000
     s = time.perf_counter()
@@ -151,3 +150,7 @@ if __name__ == "__main__":
     e = time.perf_counter()
     print(amount / (e - s))
     print(all(verified))
+
+
+if __name__ == "__main__":
+    main()
