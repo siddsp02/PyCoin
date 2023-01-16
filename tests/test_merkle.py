@@ -88,11 +88,13 @@ def test_hash_tree() -> None:
 
 
 def test_hash_pair() -> None:
-    pair = [
-        "138cd20eaf96be8ccc4db19da65aaa2c9f918ed2bba76bd2476c430371e7a196",
-        "0dbaa5777b962e87ddcf55dbcec76d72515ed22756e90ae3d221c713afd67074",
-    ]
-    pair_bin = map(bytes.fromhex, pair)
+    pair_bin = map(
+        bytes.fromhex,
+        (
+            "138cd20eaf96be8ccc4db19da65aaa2c9f918ed2bba76bd2476c430371e7a196",
+            "0dbaa5777b962e87ddcf55dbcec76d72515ed22756e90ae3d221c713afd67074",
+        ),
+    )
     assert (
         hash_pair(*pair_bin).hex()
         == "429421358ae0ca8aa84fd8451763befc4a21e6c28fed6e4e54cc39503a26ccc8"
