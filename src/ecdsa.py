@@ -5,12 +5,13 @@ import random
 import struct
 import time
 
+
 try:
     from .secp256k1 import CURVE, Point
-    from .utils import bytelength, extract_bits, sha256d
+    from .utils import extract_bits, int_to_bytes_be, sha256d
 except ImportError:
     from secp256k1 import CURVE, Point
-    from utils import bytelength, extract_bits, sha256d
+    from utils import extract_bits, int_to_bytes_be, sha256d
 
 WORKERS = mp.cpu_count()
 
@@ -26,8 +27,7 @@ def generate(privkey: int, message: bytes = b"") -> tuple[int, int]:
     References:
         - https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm
     """
-    message_hash = sha256d(message)
-    z = extract_bits(message_hash, start=0, end=256)
+    z = extract_bits(sha256d(message), start=0, end=256)
     (r, s) = (0, 0)  # Start with invalid values by default.
     while r == 0 or s == 0:
         k = random.randrange(1, n)
@@ -45,8 +45,7 @@ def verify(signature: tuple[int, int], pubkey: Point, message: bytes) -> bool:
     """
     if not pubkey.on_curve or pubkey == (0, 1, 0):
         return False
-    message_hash = sha256d(message)
-    z = extract_bits(message_hash, start=0, end=256)
+    z = extract_bits(sha256d(message), start=0, end=256)
     (r, s) = signature
     s1 = pow(s, -1, n)
     u1, u2 = (z * s1) % n, (r * s1) % n
@@ -57,60 +56,40 @@ def verify(signature: tuple[int, int], pubkey: Point, message: bytes) -> bool:
     return r == x % n
 
 
-def encode(signature: tuple[int, int]) -> bytes:
+def encode(sig: tuple[int, int]) -> bytes:
     """Returns a DER signature when given a signature pair (r, s).
 
     References:
         - https://bitcoin.stackexchange.com/questions/12554/
     """
-    (r, s) = signature
-    r_size, s_size = bytelength(r), bytelength(s)
-    r_prefix, *r = r.to_bytes(r_size, byteorder="big")
-    s_prefix, *s = s.to_bytes(s_size, byteorder="big")
-    r, s = bytes(r), bytes(s)
-    # Formatted strings for packing the byte values of the signature.
-    r_fmt, s_fmt = f"B{r_size-1}s", f"B{s_size-1}s"
-    # If the most significant byte of r and s are greater than 0x7F,
-    # values are left-padded with the pad byte 0x00 by convention.
-    if r_prefix > 0x7F:
-        r_fmt = "!x" + r_fmt
-    if s_prefix > 0x7F:
-        s_fmt = "!x" + s_fmt
-    # Re-pack our signature bytes based on the new format string.
-    r = struct.pack(r_fmt, r_prefix, r)
-    s = struct.pack(s_fmt, s_prefix, s)
-    r_size, s_size = len(r), len(s)
-    # For the 1st byte (0-based-indexing) of our message, the value
-    # is the length of the remaining data used in the DER signature.
-    ec_size = 1 + r_size + 2 + s_size + 1
-    sig_fmt = f"!4B{r_size}s2B{s_size}sB"
-    sighash = 0x00  # This needs to be assigned.
-    return struct.pack(
-        sig_fmt, 0x30, ec_size, 0x02, r_size, r, 0x02, s_size, s, sighash
-    )
+    (r, s) = map(int_to_bytes_be, sig)
+    if r[0] > 0x7F:
+        r = b"\x00" + r
+    if s[0] > 0x7F:
+        s = b"\x00" + s
+    size = 1 + 2 + len(r) + 2 + len(s)
+    ret = bytearray(1 + size)
+    fmt = f">4B{len(r)}s2B{len(s)}s"
+    struct.pack_into(fmt, ret, 0, 0x30, size - 1, 0x2, len(r), r, 0x2, len(s), s)
+    return ret
 
 
-def decode(signature: bytes) -> tuple[int, int]:
+def decode(sig: bytes) -> tuple[int, int]:
     """Returns the decoded signature pair of a DER-encoded signature.
 
     References:
         - https://bitcoin.stackexchange.com/questions/12554/
     """
-    header, ec_size = struct.unpack_from("!2B", signature)
-    if ec_size != len(signature) - 3:
-        raise ValueError("Signature has invalid encoding length.")
-    if header != 0x30:
-        raise ValueError("Signature does not have proper header prefix.")
-    int_flag, r_size = struct.unpack_from("!2B", signature, offset=2)
-    if int_flag != 0x02:
-        raise ValueError("Signature not properly encoded.")
-    r, int_flag, s_size = struct.unpack_from(f"!{r_size}sBB", signature, offset=4)
-    if int_flag != 0x02:
-        raise ValueError("Signature not properly encoded.")
-    s, sighash = struct.unpack_from(f"!{s_size}sB", signature, offset=4 + r_size + 2)
-    assert sighash == 0x00  # TODO: Change valid sighash value.
-    r = int.from_bytes(r, byteorder="big")
-    s = int.from_bytes(s, byteorder="big")
+    offset = 3
+    rlen = sig[offset]
+    offset += 1
+    rbin = sig[offset : offset + rlen]
+    offset += rlen + 1
+    slen = sig[offset]
+    offset += 1
+    sbin = sig[offset : offset + slen]
+    r = int.from_bytes(rbin, byteorder="big")
+    s = int.from_bytes(sbin, byteorder="big")
     return (r, s)
 
 
