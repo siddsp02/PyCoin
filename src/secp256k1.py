@@ -19,6 +19,11 @@ from typing import NamedTuple
 
 from typing_extensions import Self
 
+try:
+    from .utils import bits
+except ImportError:
+    from utils import bits
+
 CURVE = (p, a, b, G, n, h) = (
     0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F,
     0x0,
@@ -54,26 +59,20 @@ class AffinePoint(NamedTuple):
         since that is the network standard.
         """
         prefix, x = struct.unpack("!B32s", data)
-        size = len(data)
         x = int.from_bytes(x, byteorder="big")
         # Parse the data depending on the format in which the bytes are stored.
-        if prefix in {2, 3} and size == 33:
-            curve = (pow(x, 3, p) + b) % p
+        if prefix in {2, 3} and len(data) == 33:
+            curve = (x*x*x + b) % p
             y = tonelli(curve, p)
-        elif prefix == 4 and size == 65:
-            y = struct.unpack_from("!32s", data, offset=33)
+        elif prefix == 4 and len(data) == 65:
+            y = struct.unpack_from(">32s", data, offset=33)
             y = int.from_bytes(y, byteorder="big")
         else:
             raise ValueError("Invalid parameters.")
-        point = AffinePoint(x, y)  # type: ignore
+        point = cls(x, y)  # type: ignore
         if not point.on_curve:
             raise ValueError("Invalid point (bad x coord).")
-        # NOTE: This needs to be fixed. Negation has nothing to do with
-        # the prefix. The prefix denotes whether the y value should be
-        # even or odd, so the solution might be finding the other root
-        # modulo p to get the y value of the point from the x coordinate
-        # using the Tonelli shanks algorithm.
-        return point if prefix != 3 else -point
+        return point
 
     @property
     def on_curve(self) -> bool:
@@ -139,7 +138,7 @@ class AffinePoint(NamedTuple):
         References:
             - https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication
         """
-        infinity = AffinePoint.infinity()
+        infinity = type(self).infinity()
         (xp, yp), (xq, yq) = self, other
         if self == infinity:
             return other  # type: ignore
@@ -151,7 +150,7 @@ class AffinePoint(NamedTuple):
             m = (yq-yp) * pow(xq-xp, -1, p) % p
         xr = ((m*m % p) - xp - xq) % p
         yr = (m * (xp-xr) - yp) % p
-        return AffinePoint(xr, yr)
+        return type(self)(xr, yr)
 
     __radd__ = __add__
 
@@ -164,13 +163,11 @@ class AffinePoint(NamedTuple):
         References:
             - https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication
         """
-        mask, bits = 1, other.bit_length() - 1
-        tmp, res = self, AffinePoint.infinity()
-        for _ in range(bits + 1):
-            if other & mask:
+        tmp, res = self, type(self).infinity()
+        for bit in bits(other, reverse=True):
+            if bit:
                 res += tmp
             tmp += tmp
-            mask <<= 1
         return res
 
     __rmul__ = __mul__  # type: ignore
@@ -195,7 +192,7 @@ class Point(NamedTuple):
 
     @classmethod
     def from_affine(cls, point: AffinePoint) -> Self:
-        return cls(point.x, point.y, 1)
+        return cls(*point)
 
     @classmethod
     def from_int(cls, value: int) -> Self:
@@ -289,13 +286,11 @@ class Point(NamedTuple):
         References:
             - https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication
         """
-        mask, bits = 1, other.bit_length() - 1
         tmp, res = self, Point(0, 1, 0)
-        for _ in range(bits + 1):
-            if other & mask:
+        for bit in bits(other, reverse=True):
+            if bit:
                 res += tmp
             tmp += tmp
-            mask <<= 1
         return res
 
     __rmul__ = __mul__  # type: ignore
