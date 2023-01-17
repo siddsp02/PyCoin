@@ -15,9 +15,9 @@ except ImportError:
 
 WORKERS = mp.cpu_count()
 
-p, a, b, G, n, h = CURVE
+p, a, b, g, n, h = CURVE
 
-G = Point.from_int(G)
+G = Point.from_int(g)
 
 
 def generate(privkey: int, message: bytes = b"") -> tuple[int, int]:
@@ -93,7 +93,9 @@ def decode(sig: bytes) -> tuple[int, int]:
     return (r, s)
 
 
-def generate_sigs(amount: int) -> list:
+def generate_sigs(
+    amount: int,
+) -> list[tuple[tuple[int, int], tuple[int, ...] | int, bytes]]:
     cores = mp.cpu_count()
     msgs = [random.randbytes(10)] * amount
     keys = [random.randint(1, n - 1) for _ in range(amount)]
@@ -103,7 +105,9 @@ def generate_sigs(amount: int) -> list:
     return list(zip(sigs, pubkeys, msgs))
 
 
-def verify_sigs(params: list) -> list:
+def verify_sigs(
+    params: list[tuple[tuple[int, int], tuple[int, ...] | int, bytes]]
+) -> list[bool]:
     cores = mp.cpu_count()
     amount = len(params)
     with mp.Pool() as pool:
