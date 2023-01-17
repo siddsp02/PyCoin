@@ -33,145 +33,7 @@ CURVE = (p, a, b, G, n, h) = (
     0x1,
 )
 
-
 # fmt: off
-
-class AffinePoint(NamedTuple):
-    x: int
-    y: int
-
-    @classmethod
-    def infinity(cls) -> Self:
-        return cls(None, None) # type: ignore
-
-    @classmethod
-    def from_int(cls, value: int) -> Self:
-        """Returns a new Point on the secp256k1 curve when given its integer value."""
-        bits = value.bit_length()
-        length = 33 if bits <= 272 else 65
-        val_bytes = value.to_bytes(length, byteorder="big")
-        return cls.from_bytes(val_bytes)
-
-    @classmethod
-    def from_bytes(cls, data: bytes) -> Self:
-        """Returns a new Point on the secp256k1 curve when given binary data.
-        In this case, we unpack our data with big-endian as our byte format,
-        since that is the network standard.
-        """
-        prefix, x = struct.unpack("!B32s", data)
-        x = int.from_bytes(x, byteorder="big")
-        # Parse the data depending on the format in which the bytes are stored.
-        if prefix in {2, 3} and len(data) == 33:
-            curve = (x*x*x + b) % p
-            y = tonelli(curve, p)
-        elif prefix == 4 and len(data) == 65:
-            y = struct.unpack_from(">32s", data, offset=33)
-            y = int.from_bytes(y, byteorder="big")
-        else:
-            raise ValueError("Invalid parameters.")
-        point = cls(x, y)  # type: ignore
-        if not point.on_curve:
-            raise ValueError("Invalid point (bad x coord).")
-        return point
-
-    @property
-    def on_curve(self) -> bool:
-        (x, y) = self
-        if y is None:
-            return False
-        return (x*x*x + b) % p == y*y % p
-
-    def __bytes__(self) -> bytes:
-        """Returns the bytes of the point in uncompressed form, using SEC Encoding.
-        This is the same type of encoding used to parse a point from a bytes object.
-        """
-        x_bytes = self.x.to_bytes(32, byteorder="big")
-        y_bytes = self.y.to_bytes(32, byteorder="big")
-        return struct.pack("!B32s32s", 4, x_bytes, y_bytes)
-
-    def __str__(self) -> str:
-        return f"{*self,}"
-
-    def __neg__(self) -> Self:
-        """Returns the negated value of a Point on the secp256k1 curve.
-        The negated value of a point is a point such that the original
-        point added to it results in the point at infinity. In the case
-        of the elliptic curve, this is just the point with the y-value
-        negated.
-
-        Examples:
-        >>> p = AffinePoint(x=103, y=427)
-        >>> -p
-        AffinePoint(x=103, y=-427)
-        >>> p = AffinePoint(x=12, y=312)
-        >>> -p
-        AffinePoint(x=12, y=-312)
-        >>> p = AffinePoint(x=327, y=113)
-        >>> -p
-        AffinePoint(x=327, y=-113)
-        """
-        (x, y) = self
-        return AffinePoint(x, -y)
-
-    def __add__(self, other: Self | tuple[int, int]) -> Self:
-        """Returns the result of adding two points on the secp256k1 curve.
-
-        When adding two points, a regular tuple is also considered as a
-        point on the curve, meaning that an operation can be performed on
-        one as well. This allows us to add a tuple to our Point without
-        having to worry about conversions.
-
-        Note that adding a point to its negation results in a Point(0, 0).
-        This is also known as the Point at infinity (in this case),
-        which is a special value such that adding a Point to it will result
-        in the original point. This is also the field/value a on secp256k1.
-
-        Examples:
-        >>> p1 = AffinePoint(x=31, y=26)
-        >>> p1 + -p1
-        AffinePoint(x=None, y=None)
-        >>> p1 = AffinePoint(x=216, y=3)
-        >>> p2 = AffinePoint(x=216, y=-3)
-        >>> p1 + p2
-        AffinePoint(x=None, y=None)
-
-        References:
-            - https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication
-        """
-        infinity = type(self).infinity()
-        (xp, yp), (xq, yq) = self, other
-        if self == infinity:
-            return other  # type: ignore
-        elif self == other:
-            m = 3*(xp*xp % p) * pow(2*yp, -1, p)
-        elif -self == other:
-            return infinity
-        else:
-            m = (yq-yp) * pow(xq-xp, -1, p) % p
-        xr = ((m*m % p) - xp - xq) % p
-        yr = (m * (xp-xr) - yp) % p
-        return type(self)(xr, yr)
-
-    __radd__ = __add__
-
-    def __mul__(self, other: int) -> Self:
-        """Elliptic curve multiplication of a point by a scalar value.
-
-        Point multiplication is done by repeatedly doubling and adding
-        a point along a curve based on the bits of the scalar value.
-
-        References:
-            - https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication
-        """
-        tmp, res = self, type(self).infinity()
-        for bit in bits(other, reverse=True):
-            if bit:
-                res += tmp
-            tmp += tmp
-        return res
-
-    __rmul__ = __mul__  # type: ignore
-
 
 # By default, Projective/Jacobian coordinates are used to represent points
 # since they are much faster for Point arithmetic, due to modular inverse
@@ -185,14 +47,6 @@ class Point(NamedTuple):
     x: int
     y: int
     z: int = 1  # For affine coordinate conversion.
-    
-    @classmethod
-    def infinity(cls) -> Self:
-        return cls(0, 1, 0)
-
-    @classmethod
-    def from_affine(cls, point: AffinePoint) -> Self:
-        return cls(*point)
 
     @classmethod
     def from_int(cls, value: int) -> Self:
@@ -203,19 +57,50 @@ class Point(NamedTuple):
 
     @classmethod
     def from_bytes(cls, data: bytes) -> Self:
-        new_point = AffinePoint.from_bytes(data)
-        return Point.from_affine(new_point)
+        pref, xbin = struct.unpack(">B32s", data)
+        x = int.from_bytes(xbin, byteorder="big")
+        if pref in {0x2, 0x3} and len(data) == 33:
+            curve = (x*x*x + b) % p
+            y = tonelli(curve, p)
+            if y is None:
+                raise ValueError("Invalid point (bad x coord).")
+        elif pref == 0x4 and len(data) == 65:
+            ybin = struct.unpack_from(">32s", data, offset=33)
+            y = int.from_bytes(ybin, byteorder="big")
+        else:
+            raise ValueError("Invalid parameters.")
+        point = cls(x, y)
+        if not point.on_curve:
+            raise ValueError("Invalid point (bad x coord).")
+        return point
+
+    def affine(self) -> tuple[int, int]:
+        (x, y, z) = self
+        zi = pow(z, -1, p)
+        zi_2 = zi*zi
+        zi_3 = zi*zi_2
+        x, y = x*zi_2 % p, y*zi_3 % p 
+        return (x, y)
 
     @property
     def on_curve(self) -> bool:
-        new_point = self.affine()
-        return new_point.on_curve
+        x, y = self.affine()
+        return (x*x*x + b) % p == y*y % p
 
-    def affine(self) -> AffinePoint:
+    def double(self) -> Self:
         (x, y, z) = self
-        xr = x * pow(z, -2, p) % p
-        yr = y * pow(z, -3, p) % p
-        return AffinePoint(xr, yr)
+        if y == 0:
+            return type(self)(0, 1, 0)
+        y_2 = y*y % p
+        y_4 = y_2*y_2 % p
+        x_2 = x*x % p
+        s = 4*x*y_2 % p
+        m = (3*x_2) % p
+        x3 = (m*m - 2*s) % p
+        y3 = (m * (s-x3) - 8*y_4) % p
+        z3 = 2*y*z % p
+        return type(self)(x3, y3, z3)
+        
 
     def __str__(self) -> str:
         return f"{*self,}"
@@ -243,7 +128,7 @@ class Point(NamedTuple):
         if self == other:
             (x, y, z) = self
             if y == 0:
-                return Point(0, 1, 0)
+                return type(self)(0, 1, 0)
             y_2 = y*y % p
             y_4 = y_2*y_2 % p
             x_2 = x*x % p
@@ -272,7 +157,7 @@ class Point(NamedTuple):
             zs = (z1+z2) % p
             zs_2 = zs*zs % p
             z3 = (zs_2-z1_2-z2_2) * h % p
-        return Point(x3, y3, z3)
+        return type(self)(x3, y3, z3)
 
     __radd__ = __add__
 
@@ -286,11 +171,11 @@ class Point(NamedTuple):
         References:
             - https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication
         """
-        tmp, res = self, Point(0, 1, 0)
+        tmp, res = self, type(self)(0, 1, 0)
         for bit in bits(other, reverse=True):
             if bit:
                 res += tmp
-            tmp += tmp
+            tmp = tmp.double()
         return res
 
     __rmul__ = __mul__  # type: ignore
