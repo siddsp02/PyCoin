@@ -46,7 +46,7 @@ def timestamp_to_hex(
 
 
 def bits(n: int, reverse: bool = False) -> Iterator[Bit]:
-    return map(int, f"{n:b}" if not reverse else f"{n:b}"[::-1])  # type: ignore
+    return map(int, f"{n:b}"[::-1] if reverse else f"{n:b}")  # type: ignore
 
 
 def vectorize_bits(n: int) -> list[Bit]:
@@ -56,10 +56,11 @@ def vectorize_bits(n: int) -> list[Bit]:
 
 def extract_bits(data: bytes, start: int = 0, end: int = 0) -> int:
     """Extracts the bits of a bytes object, returning its integer value.
-
     Note that value indices are extracted from MSB to LSB, so the order
     of bits is parsed from left to right.
-
+    **This is likely going to be removed and replaced with bitwise
+    operations, but I followed the pseudocode to avoid potential
+    errors or issues.**
     Examples:
     >>> x = 0b1111010100000011
     >>> x_bytes = x.to_bytes(16, byteorder="big")
@@ -71,11 +72,9 @@ def extract_bits(data: bytes, start: int = 0, end: int = 0) -> int:
     14
     """
     value = int.from_bytes(data, byteorder="big")
-    size = value.bit_length()
-    p = end - start
-    q = size - p
-    value &= (~(1 << p) << q) >> (size - q)
-    return value
+    bitvector = vectorize_bits(value)[start:end]
+    bitstring = "".join(map(str, bitvector))
+    return int(bitstring, base=2)
 
 
 def bytelength(x: int) -> int:
@@ -97,7 +96,7 @@ def int_to_bytes_be(x: int) -> bytes:
     return x.to_bytes(bytelength(x), byteorder="big")
 
 
-def encode_base58(s: bytes):
+def encode_base58(s: bytes) -> str:
     """Encodes a bytes object to base58 format.
 
     References:
@@ -106,13 +105,12 @@ def encode_base58(s: bytes):
     BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
     zeros = s.rindex(0) + 1
     assert all(not char for char in s[:zeros])
-    pref, res = "1" * zeros, ""
+    res = ""
     num = int.from_bytes(s, byteorder="big")
     while num > 0:
         num, mod = divmod(num, 58)
         res = BASE58_ALPHABET[mod] + res
-    return pref + res
-
+    return "1" * zeros + res
 
 if __name__ == "__main__":
     doctest.testmod()
