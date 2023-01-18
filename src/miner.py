@@ -65,7 +65,7 @@ def hashrate_from_difficulty(diff: float) -> float:
 def update_timestamp(block_header: bytearray) -> None:
     """Updates the timestamp of a block header."""
     timestamp = datetime.utcnow()
-    struct.pack_into("<I", block_header, 3, timestamp)
+    struct.pack_into("<I", block_header, 68, timestamp)
 
 
 def parse_block_json(filename: str, fields: dict[str, int] | None = None) -> bytearray:
