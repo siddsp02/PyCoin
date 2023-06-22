@@ -14,9 +14,7 @@ except ImportError:
 
 Direction = Literal["left", "right"]
 ProofElement = tuple[Direction, bytes]
-ProofList = list[ProofElement]
-PairList = list[bytes]
-MerkleProof = tuple[ProofList, PairList]
+MerkleProof = list[ProofElement]
 
 T = TypeVar("T", bound=bytes)
 
@@ -86,6 +84,17 @@ def create_proof(merkle_tree: Sequence[bytes], tx: bytes) -> MerkleProof:
 
     To add, the following code is not complete. There are still issues
     with trying to create merkle proofs properly.
+    
+    Examples:
+    >>> txs = map(bytes.fromhex,                                                \
+            ["1877fc02dfb78b83b913c0eef8fa5990a55dd4a56449faf97a0dcb6f04cff32b",\
+             "94d67aa1720ef6b58d130e39f3b7b4e5e7dab07698ab6baf1465e7e639115e05",\
+             "80a2726fbbe93a8a74bc5a357274510e6a00dfd50489a13c396d2c288e106ec2",\
+             "5a3e9111cc3a69cc26d290578d46fb40ba1d4abcf706487a1b6d03730d3bdf02"]\
+        )
+    >>> tx = bytes.fromhex("94d67aa1720ef6b58d130e39f3b7b4e5e7dab07698ab6baf1465e7e639115e05")
+    >>> create_proof(txs, tx)
+    None
 
     References:
         - https://gutier.io/post/programming-tutorial-blockchain-haskell-merkle-tree/
@@ -107,10 +116,7 @@ def create_proof(merkle_tree: Sequence[bytes], tx: bytes) -> MerkleProof:
         proof_sequence.append(proof_element)
         combined_pairs.append(item)
         tree[:] = starmap(hash_pair, pairs(tree))
-    return proof_sequence, combined_pairs
-
-
-# fmt: on
+    return proof_sequence
 
 
 def verify_proof(merkle_tree: Iterable[bytes], tx: bytes) -> bool:
@@ -124,4 +130,15 @@ def verify_root(merkle_tree: Iterable[bytes], root_hash: bytes) -> bool:
 
 
 if __name__ == "__main__":
-    doctest.testmod()
+    # doctest.testmod()
+    tree = list(
+        map(
+            bytes.fromhex,
+            [
+                "1877fc02dfb78b83b913c0eef8fa5990a55dd4a56449faf97a0dcb6f04cff32b",
+                "94d67aa1720ef6b58d130e39f3b7b4e5e7dab07698ab6baf1465e7e639115e05",
+                "80a2726fbbe93a8a74bc5a357274510e6a00dfd50489a13c396d2c288e106ec2",
+                "5a3e9111cc3a69cc26d290578d46fb40ba1d4abcf706487a1b6d03730d3bdf02",
+            ],
+        )
+    )
