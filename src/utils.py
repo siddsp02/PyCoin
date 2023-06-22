@@ -112,5 +112,6 @@ def encode_base58(s: bytes) -> str:
         res = BASE58_ALPHABET[mod] + res
     return "1" * zeros + res
 
+
 if __name__ == "__main__":
     doctest.testmod()
