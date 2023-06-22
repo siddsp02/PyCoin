@@ -193,9 +193,11 @@ class Block:
         previous_block: Block | None = None,
         txs: list[Tx] | None = None,
     ) -> None:
+        if txs is None:
+            txs = []
         # Insertion order is preserved for hash tables, so the hash to tx
         # mapping can be used for proofs of inclusion later on when needed.
-        self.txs = {} if txs is None else {tx.hash(): tx for tx in txs}
+        self.txs = {tx.hash(): tx for tx in txs}
         self.version = version
         self.previous_block = previous_block
         # To be added later on for adjustment.
