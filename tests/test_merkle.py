@@ -15,7 +15,7 @@ BLOCKS = [
             "80a2726fbbe93a8a74bc5a357274510e6a00dfd50489a13c396d2c288e106ec2",
             "5a3e9111cc3a69cc26d290578d46fb40ba1d4abcf706487a1b6d03730d3bdf02",
         ],
-        hash="",
+        hash="74fe176dcfe07bf6e0ef0f9ee63c81b78623ac9b03137d5f4cfd80f0e500a7c3",
     ),
     BlockTxsAndHash(
         txs=[
