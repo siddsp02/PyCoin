@@ -10,10 +10,20 @@ References: https://en.bitcoin.it/wiki/Script
 # of Bitcoin. This is still very much a WIP since the
 # actual functionality has yet to be added.
 
-# fmt: off
-
+import inspect
+from dataclasses import dataclass
 from enum import IntEnum
+from itertools import starmap
+from operator import add, eq, mul, sub
+from pprint import pprint
+import re
+from typing import Any
 
+
+stack = []
+push = stack.append
+
+# fmt: off
 
 class Opcodes(IntEnum):
     OP_0 = OP_FALSE = 0x00
@@ -23,13 +33,18 @@ class Opcodes(IntEnum):
     OP_1NEGATE = 0x4F
     OP_1 = OP_TRUE = 0x51
     OP_2 = 0x52
-    OP_4 = 0x53
-    OP_6 = 0x54
-    OP_8 = 0x55
-    OP_10 = 0x56
-    OP_12 = 0x57
-    OP_14 = 0x58
-    OP_16 = 0x60
+    OP_3 = 0x53
+    OP_4 = 0x54
+    OP_5 = 0x55
+    OP_6 = 0x56
+    OP_7 = 0x57
+    OP_8 = 0x58
+    OP_9 = 0x59
+    OP_10 = 0x5A
+    OP_11 = 0x5B
+    OP_14 = 0x5C
+    OP_15 = 0x5D
+    OP_16 = 0x5E
     OP_NOP = 0x61
     OP_IF = 0x63
     OP_NOTIF = 0x64
@@ -128,6 +143,55 @@ class Opcodes(IntEnum):
     OP_NOP9 = 0xB8
     OP_NOP10 = 0xB9
 
+# fmt: on
+
+
+@dataclass
+class Opcode:
+    name: str
+    value: int
+    func: Any = None
+
+    def __int__(self) -> int:
+        return self.value
+
+    def __eq__(self, other: int) -> bool:
+        return int(self) == other
+
+    def __call__(self):
+        if self.func is None:
+            return None
+        args = [stack.pop() for _ in range(self.argcount)]
+        result = self.func(*args)
+        push(result)
+
+    @property
+    def argcount(self) -> int:
+        if self.func is None:
+            return 0
+        return len(inspect.signature(self.func).parameters)
+
+
+opcode_list = list(starmap(Opcode, Opcodes.__members__.items()))
+opcode_map = {opcode.name: opcode for opcode in opcode_list}
+
+opcode_map["OP_ADD"].func = add
+opcode_map["OP_SUB"].func = sub
+opcode_map["OP_MUL"].func = mul
+opcode_map["OP_EQUAL"].func = eq
+
+
+def run(script: str) -> None:
+    split = re.split(r"\s+", script)  # Split by whitespace.
+    if not all(s.isnumeric() or s in opcode_map for s in split):
+        raise ValueError()
+    for item in split:
+        if item.isnumeric():
+            push(int(item))
+        else:
+            opcode_map[item]()
+
 
 if __name__ == "__main__":
-    ...
+    run("2 7 OP_ADD 3 OP_SUB 1 OP_ADD 7 OP_EQUAL")
+    print(stack)
