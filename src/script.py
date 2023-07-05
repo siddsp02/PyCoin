@@ -7,18 +7,22 @@ References: https://en.bitcoin.it/wiki/Script
 # Mini scripting language used in the Bitcoin Protocol.
 # Consists of enumerated constants as opcodes.
 # Many opcodes have been disabled in the current version
-# of Bitcoin. This is still very much a WIP since the
-# actual functionality has yet to be added.
+# of Bitcoin. This is still very much a WIP.
 
 import inspect
+import re
 from dataclasses import dataclass
 from enum import IntEnum
 from itertools import starmap
-from operator import add, eq, mul, sub
-from pprint import pprint
-import re
-from typing import Any
+from operator import add, eq, le, lt, ne, sub
+from typing import Any, NoReturn
 
+try:
+    from .utils import flip
+except ImportError:
+    from utils import flip
+
+# Eventually a new class is going to be made to hold the script stack.
 
 stack = []
 push = stack.append
@@ -172,16 +176,33 @@ class Opcode:
         return len(inspect.signature(self.func).parameters)
 
 
+class DisabledOpcodeError(Exception):
+    ...
+
+
+def opcode_disabled() -> NoReturn:
+    raise DisabledOpcodeError("Opcode is disabled.")
+
+
 opcode_list = list(starmap(Opcode, Opcodes.__members__.items()))
 opcode_map = {opcode.name: opcode for opcode in opcode_list}
 
+# Opcode functions (more to be added, WIP).
 opcode_map["OP_ADD"].func = add
-opcode_map["OP_SUB"].func = sub
-opcode_map["OP_MUL"].func = mul
+opcode_map["OP_SUB"].func = flip(sub)
+opcode_map["OP_MUL"].func = opcode_disabled
 opcode_map["OP_EQUAL"].func = eq
 
+opcode_map["OP_NUMNOTEQUAL"].func = ne
+opcode_map["OP_LESSTHAN"].func = lt
 
-def run(script: str) -> None:
+
+# To be implemented...
+def isword():
+    ...
+
+
+def run(script: str) -> Any:
     split = re.split(r"\s+", script)  # Split by whitespace.
     if not all(s.isnumeric() or s in opcode_map for s in split):
         raise ValueError()
@@ -190,8 +211,8 @@ def run(script: str) -> None:
             push(int(item))
         else:
             opcode_map[item]()
+    return stack.pop()
 
 
 if __name__ == "__main__":
-    run("2 7 OP_ADD 3 OP_SUB 1 OP_ADD 7 OP_EQUAL")
-    print(stack)
+    print(run("2 7 OP_ADD 3 OP_SUB 1 OP_ADD 7 OP_EQUAL"))
