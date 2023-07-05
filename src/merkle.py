@@ -5,7 +5,6 @@ swapped for update functions to speed up hashing and concatenation.
 import doctest
 from functools import reduce
 from itertools import starmap, zip_longest
-from textwrap import dedent
 from typing import Iterable, Iterator, Literal, Sequence
 
 try:
