@@ -1,12 +1,14 @@
 """Utility functions for conversions and parsing."""
 
 import doctest
-import struct
 from datetime import datetime
 from hashlib import sha256
-from typing import Iterator, Literal, TypeVar
+from itertools import pairwise
+from typing import Callable, Iterator, Literal, Sequence, TypeVar
 
 T = TypeVar("T")
+U = TypeVar("U")
+V = TypeVar("V")
 
 Bit = Literal[0, 1]
 
@@ -19,6 +21,29 @@ def sha256d(b: bytes) -> bytes:
 def swap_ordering(hexstr: str) -> str:
     """Returns a copy of a hex string with the byte order reversed."""
     return bytes.fromhex(hexstr)[::-1].hex()
+
+
+def flip(func: Callable[[T, U], V]) -> Callable[[U, T], V]:
+    """Returns a new version of a function with the arguments flipped.
+
+    Examples:
+    >>> from operator import concat
+    >>> concat("abc", "def")
+    'abcdef'
+    >>> concat = flip(concat)
+    >>> concat("abc", "def")
+    'defabc'
+    """
+
+    def wrapper(p, q):
+        return func(q, p)
+
+    return wrapper
+
+
+def split(seq: Sequence[T], n: int) -> Iterator[Sequence[T]]:
+    for i, j in pairwise(range(0, len(seq), len(seq) // n)):
+        yield seq[i:j]
 
 
 def datetime_to_hex(
