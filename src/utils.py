@@ -1,9 +1,11 @@
 """Utility functions for conversions and parsing."""
 
 import doctest
+import hashlib
 from datetime import datetime
 from hashlib import sha256
 from itertools import pairwise
+from operator import not_
 from typing import Callable, Iterator, Literal, Sequence, TypeVar
 
 T = TypeVar("T")
@@ -11,6 +13,16 @@ U = TypeVar("U")
 V = TypeVar("V")
 
 Bit = Literal[0, 1]
+
+
+def modinv(a: int, n: int) -> int:
+    """Returns the modular inverse of a and n."""
+    return pow(a, -1, n)
+
+
+def ripemd160(b: bytes) -> bytes:
+    """Returns the RIPEMD160 hash of a buffer."""
+    return hashlib.new("ripemd160", b).digest()
 
 
 def sha256d(b: bytes) -> bytes:
@@ -86,6 +98,7 @@ def extract_bits(data: bytes, start: int = 0, end: int = 0) -> int:
     **This is likely going to be removed and replaced with bitwise
     operations, but I followed the pseudocode to avoid potential
     errors or issues.**
+
     Examples:
     >>> x = 0b1111010100000011
     >>> x_bytes = x.to_bytes(16, byteorder="big")
@@ -111,6 +124,10 @@ def bytelength(x: int) -> int:
     return (x.bit_length() + 7) // 8
 
 
+def partition(seq: Sequence[T], index: int) -> tuple[Sequence[T], Sequence[T]]:
+    return seq[:index], seq[index:]
+
+
 def int_to_bytes_le(x: int) -> bytes:
     """Convert an integer to bytes (little endian)."""
     return x.to_bytes(bytelength(x), byteorder="little")
@@ -121,6 +138,15 @@ def int_to_bytes_be(x: int) -> bytes:
     return x.to_bytes(bytelength(x), byteorder="big")
 
 
+def bytes_to_int_le(x: bytes) -> int:
+    """Convert bytes to an integer (little endian)."""
+    return int.from_bytes(x, byteorder="little")
+
+
+def bytes_to_int_be(x: bytes) -> int:
+    return int.from_bytes(x, byteorder="big")
+
+
 def encode_base58(s: bytes) -> str:
     """Encodes a bytes object to base58 format.
 
@@ -129,13 +155,17 @@ def encode_base58(s: bytes) -> str:
     """
     BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
     zeros = s.rindex(0) + 1
-    assert all(not char for char in s[:zeros])
+    assert all(map(not_, s[:zeros]))
     res = ""
     num = int.from_bytes(s, byteorder="big")
     while num > 0:
         num, mod = divmod(num, 58)
         res = BASE58_ALPHABET[mod] + res
     return "1" * zeros + res
+
+
+def timestamp() -> int:
+    return int(datetime.utcnow().timestamp())
 
 
 if __name__ == "__main__":
