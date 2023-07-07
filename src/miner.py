@@ -14,23 +14,68 @@ import math
 import multiprocessing as mp
 import struct
 import time
-from datetime import datetime
+from ctypes import Structure, c_char, c_uint32
 from functools import partial, singledispatch
+from typing import Self
 
 try:
-    from .utils import sha256d
+    from .utils import bytes_to_int_le, sha256d
 except ImportError:
-    from utils import sha256d
+    from utils import bytes_to_int_le, sha256d
 
-UINT32_MAX = 0xFFFFFFFF
 WORKERS = mp.cpu_count()
 
+UINT32_MAX = 0xFFFFFFFF
 
-def verify(header: bytes) -> bool:
-    """Verify a block header using the block hashing algorithm for Bitcoin."""
-    hashed_header = sha256d(header)
-    bits = struct.unpack_from("<I", header, offset=72)[0]
-    return int.from_bytes(hashed_header, byteorder="little") < target(bits)
+
+class Struct(Structure):
+    def __repr__(self) -> str:
+        attrs = dict(self._fields_)  # type: ignore
+        vals = map(partial(getattr, self), attrs)
+        return "{}({})".format(
+            type(self).__name__, ", ".join(map("{}={}".format, attrs, vals))
+        )
+
+    def raw(self) -> memoryview:
+        return memoryview(self)  # type: ignore
+
+
+class BlockHeader(Struct):
+    _fields_ = [
+        ("version", c_uint32),
+        ("prev_block", c_char * 32),
+        ("merkle_root", c_char * 32),
+        ("timestamp", c_uint32),
+        ("bits", c_uint32),
+        ("nonce", c_uint32),
+    ]
+
+    @property
+    def target(self) -> int:
+        p = self.bits & 0xFFFFFF
+        q = (self.bits & 0xFF000000) >> 24
+        return p * 2 ** (8 * (q - 3))
+
+    @property
+    def hash(self) -> bytes:
+        """The hash of the block header."""
+        return sha256d(self.raw())
+
+    @classmethod
+    def from_json(cls, filename: str, fields: dict[str, int] | None = None) -> Self:
+        """Returns a new BlockHeader instance by parsing a JSON."""
+        return BlockHeader.from_buffer(parse_block_json(filename, fields))
+
+    def verify(self) -> bool:
+        """Checks if the block header is valid."""
+        return bytes_to_int_le(self.hash) < self.target
+
+    def _check_nonce(self, nonce: int) -> bool:
+        """Checks a nonce to see if a valid hash is produced.
+        This modifies the original struct.
+        """
+        self.nonce = nonce
+        return self.verify()
 
 
 def difficulty(bits: int) -> float:
@@ -62,12 +107,6 @@ def hashrate_from_difficulty(diff: float) -> float:
     return (diff / 600) * 2**32
 
 
-def update_timestamp(block_header: bytearray) -> None:
-    """Updates the timestamp of a block header."""
-    timestamp = datetime.utcnow()
-    struct.pack_into("<I", block_header, 68, timestamp)
-
-
 def parse_block_json(filename: str, fields: dict[str, int] | None = None) -> bytearray:
     """Parses a JSON file of a block, converting the values into a bytearray."""
 
@@ -97,38 +136,26 @@ def parse_block_json(filename: str, fields: dict[str, int] | None = None) -> byt
         block: dict = json.load(f)
         for key in block.keys() & fields.keys():
             pack_bytes(block[key], fields[key])
-
     return header
-
-
-def check_nonce(block: bytearray, nonce: int) -> bool:
-    struct.pack_into("<I", block, 76, nonce)  # Update the nonce.
-    return verify(block)
 
 
 if __name__ == "__main__":
     # This is just an example of mining the genesis block.
     # Mining works, but it is slow since looping in Python
-    # is expensive. Later on, this might be changed into
-    # a C++ extension to speed up looping. The GIL also
-    # makes this less than ideal since the overhead for
-    # running a process is much more than that of running
-    # a thread.
-    block = parse_block_json("example_blocks/genesis.json")
+    # is expensive.
+    block = BlockHeader.from_json("example_blocks/genesis.json")
     start = 2_080_000_000
-    iterations = 2_083_236_893 - start
-    check_block = partial(check_nonce, block)
     t1 = time.perf_counter()
     with mp.Pool(processes=WORKERS) as pool:
         results = pool.imap(
-            check_block,
-            range(start, UINT32_MAX),
-            chunksize=20_000,
+            block._check_nonce, range(start, UINT32_MAX), chunksize=20_000
         )
-        for result in filter(None, results):
-            break
-        else:
-            print("Nonce not found.")
+        nonce = next((i for i, val in enumerate(results, start) if val), None)
     t2 = time.perf_counter()
-    print(f"Done {iterations=} in {t2-t1:.8f} seconds")
-    print(f"Hashrate was ~{iterations//(t2-t1)} H/s")
+    if nonce is None:
+        print("Nonce not found.")
+    else:
+        print(f"Block mined with {nonce=}")
+    print(f"Time taken = {t2-t1:.8f} seconds")
+    if nonce is not None:
+        print(f"Hashrate: {(nonce-start)//(t2-t1)} H/s")

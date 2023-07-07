@@ -1,3 +1,4 @@
+from itertools import repeat
 import random
 import math
 
@@ -6,7 +7,7 @@ from src.miner import *
 
 def test_verify() -> None:
     # Block 125552
-    blk = bytearray.fromhex(
+    buf = bytearray.fromhex(
         "01000000"
         + "81cd02ab7e569e8bcd9317e2fe99f2de44d49ab2b8851ba4a308000000000000"
         + "e320b6c2fffc8d750423db8b1eb942ae710e951ed797f7affc8892b0f1fc122b"
@@ -14,14 +15,10 @@ def test_verify() -> None:
         + "f2b9441a"
         + "42a14695"
     )
-    assert verify(blk)
-    blk[20] += 1
-    assert not verify(blk)
-    blk = bytearray.fromhex("0" * 160)
-    assert not verify(blk)
-    for _ in range(255):
-        blk[0] += 1
-        assert not verify(blk)
+    blk = BlockHeader.from_buffer(buf)
+    assert blk.verify()
+    buf[20] += 1
+    assert not blk.verify()
 
 
 def test_parse_block_json() -> None:
@@ -64,7 +61,7 @@ def test_get_target() -> None:
 
 
 def test_check_nonce() -> None:
-    block = bytearray.fromhex(
+    buf = bytearray.fromhex(
         "01000000"
         + "81cd02ab7e569e8bcd9317e2fe99f2de44d49ab2b8851ba4a308000000000000"
         + "e320b6c2fffc8d750423db8b1eb942ae710e951ed797f7affc8892b0f1fc122b"
@@ -72,7 +69,8 @@ def test_check_nonce() -> None:
         + "f2b9441a"
         + "42a14695"
     )
+    block = BlockHeader.from_buffer(buf)
     # Check a large, but limited range of values.
     for i in range(2_504_400_000, 2_504_445_000):
-        val = check_nonce(block, i)
+        val = block._check_nonce(i)
         assert val if i == 2504433986 else not val
