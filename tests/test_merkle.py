@@ -1,6 +1,6 @@
 from typing import NamedTuple
 
-from src.merkle import hash_pair, hash_tree
+from src.blockchain.merkle import hash_pair, hash_tree
 
 
 class BlockTxsAndHash(NamedTuple):

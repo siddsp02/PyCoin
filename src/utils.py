@@ -2,11 +2,16 @@
 
 import doctest
 import hashlib
+import struct
 from datetime import datetime
 from hashlib import sha256
 from itertools import pairwise
-from operator import not_
 from typing import Callable, Iterator, Literal, Sequence, TypeVar
+
+try:
+    from constants import UINT16_MAX, UINT32_MAX, UINT64_MAX
+except ImportError:
+    from .constants import UINT16_MAX, UINT32_MAX, UINT64_MAX
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -28,6 +33,33 @@ def ripemd160(b: bytes) -> bytes:
 def sha256d(b: bytes) -> bytes:
     """Two rounds of sha256."""
     return sha256(sha256(b).digest()).digest()
+
+
+def hash160(b: bytes) -> bytes:
+    return ripemd160(sha256(b).digest())
+
+
+def int_to_varint(value: int) -> bytes:
+    if value < 0 or value > UINT64_MAX:
+        raise ValueError("Argument out of range.")
+
+    alloc, pref = 1, 0xFD
+    if value < 0xFD:
+        return bytes([value])
+    elif value <= UINT16_MAX:
+        alloc, fmt = alloc + 2, "<H"
+    elif value <= UINT32_MAX:
+        alloc, pref, fmt = alloc + 4, 0xFE, "<L"
+    else:
+        alloc, pref, fmt = alloc + 8, 0xFF, "<Q"
+
+    buf = bytearray(alloc)
+    buf[0] = pref
+    struct.pack_into(fmt, buf, 1, value)
+
+    assert len(buf) in {1, 3, 5, 9}
+
+    return buf
 
 
 def swap_ordering(hexstr: str) -> str:
@@ -56,30 +88,6 @@ def flip(func: Callable[[T, U], V]) -> Callable[[U, T], V]:
 def split(seq: Sequence[T], n: int) -> Iterator[Sequence[T]]:
     for i, j in pairwise(range(0, len(seq), len(seq) // n)):
         yield seq[i:j]
-
-
-def datetime_to_hex(
-    date: datetime, prefixed: bool = False, reverse: bool = False
-) -> str:
-    """Returns a hex timestamp given a datetime object.
-
-    If set to True, the 'prefixed' argument will keep the '0x'
-    prefix in the hex string.
-    """
-    ret = f"{int(date.timestamp()):{'#x' if prefixed else 'x'}}"
-    return swap_ordering(ret) if reverse else ret
-
-
-def timestamp_to_hex(
-    timestamp: float, prefixed: bool = False, reverse: bool = False
-) -> str:
-    """Returns a hex timestamp when given an integer or float.
-
-    If set to True, the 'prefixed' argument will keep the '0x'
-    prefix in the hex string.
-    """
-    ret = f"{int(timestamp):{'#x' if prefixed else 'x'}}"
-    return swap_ordering(ret) if reverse else ret
 
 
 def bits(n: int, reverse: bool = False) -> Iterator[Bit]:
@@ -145,23 +153,6 @@ def bytes_to_int_le(x: bytes) -> int:
 
 def bytes_to_int_be(x: bytes) -> int:
     return int.from_bytes(x, byteorder="big")
-
-
-def encode_base58(s: bytes) -> str:
-    """Encodes a bytes object to base58 format.
-
-    References:
-        - https://www.oreilly.com/library/view/programming-bitcoin/9781492031482/ch04.html
-    """
-    BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-    zeros = s.rindex(0) + 1
-    assert all(map(not_, s[:zeros]))
-    res = ""
-    num = int.from_bytes(s, byteorder="big")
-    while num > 0:
-        num, mod = divmod(num, 58)
-        res = BASE58_ALPHABET[mod] + res
-    return "1" * zeros + res
 
 
 def timestamp() -> int:

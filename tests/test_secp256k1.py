@@ -1,4 +1,4 @@
-from src.secp256k1 import G, Point, jacobi, tonelli
+from src.crypto.secp256k1 import G, Point, jacobi, tonelli
 
 
 def test_point_add() -> None:

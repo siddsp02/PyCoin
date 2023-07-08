@@ -15,12 +15,10 @@ purposes.
 from __future__ import annotations
 
 import struct
-from typing import NamedTuple
-
-from typing_extensions import Self
+from typing import NamedTuple, Self
 
 try:
-    from .utils import bits
+    from ..utils import bits
 except ImportError:
     from utils import bits
 

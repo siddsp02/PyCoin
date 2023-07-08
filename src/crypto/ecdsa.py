@@ -7,7 +7,7 @@ import time
 
 try:
     from .secp256k1 import CURVE, Point
-    from .utils import extract_bits, sha256d
+    from ..utils import extract_bits, sha256d
 except ImportError:
     from secp256k1 import CURVE, Point
     from utils import extract_bits, sha256d

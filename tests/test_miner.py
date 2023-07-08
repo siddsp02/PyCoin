@@ -2,7 +2,7 @@ from itertools import repeat
 import random
 import math
 
-from src.miner import *
+from src.blockchain.miner import *
 
 
 def test_verify() -> None:
