@@ -11,15 +11,12 @@ timestamp updates -- the whole thing.
 
 import json
 import math
-import multiprocessing as mp
 import struct
-import time
 from ctypes import Structure, c_char, c_uint32
 from dataclasses import dataclass
 from functools import partial, singledispatch
 from typing import Self
 
-from ..constants import UINT32_MAX, WORKERS
 from ..utils import bytes_to_int_le, int_to_bytes_le, int_to_varint, sha256d
 from .merkle import hash_tree
 

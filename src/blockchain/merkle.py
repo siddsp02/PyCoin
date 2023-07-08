@@ -2,7 +2,6 @@
 swapped for update functions to speed up hashing and concatenation.
 """
 
-import doctest
 from functools import reduce
 from itertools import starmap, zip_longest
 from typing import Iterable, Iterator, Literal, Sequence

@@ -5,12 +5,8 @@ import random
 import time
 
 
-try:
-    from .secp256k1 import CURVE, Point
-    from ..utils import extract_bits, sha256d
-except ImportError:
-    from secp256k1 import CURVE, Point
-    from utils import extract_bits, sha256d
+from .secp256k1 import CURVE, Point
+from ..utils import extract_bits, sha256d
 
 WORKERS = mp.cpu_count()
 
