@@ -2,16 +2,15 @@
 
 import multiprocessing as mp
 import random
-import struct
 import time
 
 
 try:
     from .secp256k1 import CURVE, Point
-    from .utils import extract_bits, int_to_bytes_be, sha256d
+    from .utils import extract_bits, sha256d
 except ImportError:
     from secp256k1 import CURVE, Point
-    from utils import extract_bits, int_to_bytes_be, sha256d
+    from utils import extract_bits, sha256d
 
 WORKERS = mp.cpu_count()
 
@@ -54,43 +53,6 @@ def verify(signature: tuple[int, int], pubkey: Point, message: bytes) -> bool:
         return False
     (x, y) = point.affine()  # type: ignore
     return r == x % n
-
-
-def encode(sig: tuple[int, int]) -> bytes:
-    """Returns a DER signature when given a signature pair (r, s).
-
-    References:
-        - https://bitcoin.stackexchange.com/questions/12554/
-    """
-    (r, s) = map(int_to_bytes_be, sig)
-    if r[0] > 0x7F:
-        r = b"\x00" + r
-    if s[0] > 0x7F:
-        s = b"\x00" + s
-    size = 1 + 2 + len(r) + 2 + len(s)
-    ret = bytearray(1 + size)
-    fmt = f">4B{len(r)}s2B{len(s)}s"
-    struct.pack_into(fmt, ret, 0, 0x30, size - 1, 0x2, len(r), r, 0x2, len(s), s)
-    return ret
-
-
-def decode(sig: bytes) -> tuple[int, int]:
-    """Returns the decoded signature pair of a DER-encoded signature.
-
-    References:
-        - https://bitcoin.stackexchange.com/questions/12554/
-    """
-    offset = 3
-    rlen = sig[offset]
-    offset += 1
-    rbin = sig[offset : offset + rlen]
-    offset += rlen + 1
-    slen = sig[offset]
-    offset += 1
-    sbin = sig[offset : offset + slen]
-    r = int.from_bytes(rbin, byteorder="big")
-    s = int.from_bytes(sbin, byteorder="big")
-    return (r, s)
 
 
 def generate_sigs(
