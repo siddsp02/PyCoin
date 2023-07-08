@@ -1,6 +1,4 @@
-"""The merkle tree for Bitcoin. Later on, regular hashing may be
-swapped for update functions to speed up hashing and concatenation.
-"""
+"""The merkle tree for Bitcoin."""
 
 from functools import reduce
 from itertools import starmap, zip_longest
