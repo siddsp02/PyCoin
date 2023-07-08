@@ -1,5 +1,6 @@
 from typing import NamedTuple
-from src.merkle import LEFT, RIGHT, create_proof, hash_pair, hash_tree
+
+from src.merkle import hash_pair, hash_tree
 
 
 class BlockTxsAndHash(NamedTuple):
@@ -93,9 +94,9 @@ BLOCKS = [
 
 
 def test_hash_tree() -> None:
-    for txs, tx_hash in BLOCKS:
+    for txs, txhash in BLOCKS:
         txs_bin = map(bytes.fromhex, txs)
-        assert hash_tree(txs_bin).hex() == tx_hash
+        assert hash_tree(txs_bin).hex() == txhash
 
 
 def test_hash_pair() -> None:
