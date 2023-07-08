@@ -7,10 +7,7 @@ from functools import reduce
 from itertools import starmap, zip_longest
 from typing import Iterable, Iterator, Literal, Sequence
 
-try:
-    from ..utils import sha256d
-except ImportError:
-    from utils import sha256d
+from ..utils import sha256d
 
 LEFT, RIGHT = 0, 1
 
@@ -111,7 +108,3 @@ def verify_proof(tx: bytes, proof: MerkleProof, root: bytes) -> bool:
     hashes of transaction hash pairs.
     """
     return reduce(hash_element, proof, tx) == root
-
-
-if __name__ == "__main__":
-    doctest.testmod()

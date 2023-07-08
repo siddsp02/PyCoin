@@ -19,31 +19,12 @@ from dataclasses import dataclass
 from functools import partial, singledispatch
 from typing import Self
 
-from src.utils import int_to_varint
-
-try:
-    from ..constants import UINT32_MAX, WORKERS
-    from .merkle import hash_tree
-    from ..utils import bytes_to_int_le, int_to_bytes_le, sha256d
-except ImportError:
-    from constants import UINT32_MAX, WORKERS
-    from merkle import hash_tree
-    from utils import bytes_to_int_le, int_to_bytes_le, sha256d
+from ..constants import UINT32_MAX, WORKERS
+from ..utils import bytes_to_int_le, int_to_bytes_le, int_to_varint, sha256d
+from .merkle import hash_tree
 
 
-class Struct(Structure):
-    def __repr__(self) -> str:
-        attrs = dict(self._fields_)
-        vals = map(partial(getattr, self), attrs)
-        return "{}({})".format(
-            type(self).__name__, ", ".join(map("{}={}".format, attrs, vals))
-        )
-
-    def raw(self) -> memoryview:
-        return memoryview(self)  # type: ignore
-
-
-class BlockHeader(Struct):
+class BlockHeader(Structure):
     _fields_ = [
         ("version", c_uint32),
         ("prev_block", c_char * 32),
@@ -52,6 +33,13 @@ class BlockHeader(Struct):
         ("bits", c_uint32),
         ("nonce", c_uint32),
     ]
+
+    def __repr__(self) -> str:
+        attrs = dict(self._fields_)
+        vals = map(partial(getattr, self), attrs)
+        return "{}({})".format(
+            type(self).__name__, ", ".join(map("{}={}".format, attrs, vals))
+        )
 
     @property
     def target(self) -> int:
@@ -62,7 +50,7 @@ class BlockHeader(Struct):
     @property
     def hash(self) -> bytes:
         """The hash of the block header."""
-        return sha256d(self.raw())
+        return sha256d(memoryview(self))
 
     @classmethod
     def from_json(cls, filename: str, fields: dict[str, int] | None = None) -> Self:
@@ -230,29 +218,3 @@ def parse_block_json(filename: str, fields: dict[str, int] | None = None) -> byt
         for key in block.keys() & fields.keys():
             pack_bytes(block[key], fields[key])
     return header
-
-
-def main() -> None:
-    # This is just an example of mining the genesis block.
-    # Mining works, but it is slow since looping in Python
-    # is expensive.
-    block = BlockHeader.from_json("example_blocks/genesis.json")
-    start = 2_080_000_000
-    t1 = time.perf_counter()
-    with mp.Pool(processes=WORKERS) as pool:
-        results = pool.imap(
-            block._check_nonce, range(start, UINT32_MAX), chunksize=20_000
-        )
-        nonce = next(i for i, val in enumerate(results, start) if val)
-    t2 = time.perf_counter()
-    if nonce is None:
-        print("Nonce not found.")
-    else:
-        print(f"Block mined with {nonce=}")
-    print(f"Time taken = {t2-t1:.8f} seconds")
-    if nonce is not None:
-        print(f"Hashrate: {(nonce-start)//(t2-t1)} H/s")
-
-
-if __name__ == "__main__":
-    main()

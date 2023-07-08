@@ -17,10 +17,7 @@ from __future__ import annotations
 import struct
 from typing import NamedTuple, Self
 
-try:
-    from ..utils import bits
-except ImportError:
-    from utils import bits
+from ..utils import bits
 
 CURVE = (p, a, b, G, n, h) = (
     0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F,
