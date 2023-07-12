@@ -36,7 +36,7 @@ def sha256d(b: bytes) -> bytes:
 
 
 def hash160(b: bytes) -> bytes:
-    return ripemd160(sha256(b).digest())
+    return ripemd160(sha256d(b))
 
 
 def int_to_varint(value: int) -> bytes:
