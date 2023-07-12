@@ -1,6 +1,6 @@
 import struct
 
-from ..utils import bytes_to_int_be, int_to_bytes_be
+from ..utils import bytes_to_int_big, int_to_bytes_big
 
 
 def encode(sig: tuple[int, int]) -> bytes:
@@ -9,7 +9,7 @@ def encode(sig: tuple[int, int]) -> bytes:
     References:
         - https://bitcoin.stackexchange.com/questions/12554/
     """
-    (r, s) = map(int_to_bytes_be, sig)
+    (r, s) = map(int_to_bytes_big, sig)
     if r[0] > 0x7F:
         r = b"\x00" + r
     if s[0] > 0x7F:
@@ -28,11 +28,11 @@ def decode(sig: bytes) -> tuple[int, int]:
     """
     rlen = sig[3]
     offset = 4
-    r = bytes_to_int_be(sig[offset : offset + rlen])
+    r = bytes_to_int_big(sig[offset : offset + rlen])
     offset += rlen + 1
     slen = sig[offset]
     offset += 1
-    s = bytes_to_int_be(sig[offset : offset + slen])
+    s = bytes_to_int_big(sig[offset : offset + slen])
     return (r, s)
 
 

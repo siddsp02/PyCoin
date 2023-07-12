@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from functools import partial, singledispatch
 from typing import Self
 
-from ..utils import bytes_to_int_le, int_to_bytes_le, int_to_varint, sha256d
+from ..utils import bytes_to_int_little, int_to_bytes_little, int_to_varint, sha256d
 from .merkle import hash_tree
 
 
@@ -56,7 +56,7 @@ class BlockHeader(Structure):
 
     def verify(self) -> bool:
         """Checks if the block header is valid."""
-        return bytes_to_int_le(self.hash) < self.target
+        return bytes_to_int_little(self.hash) < self.target
 
     def _check_nonce(self, nonce: int) -> bool:
         """Checks a nonce to see if a valid hash is produced.
@@ -66,15 +66,15 @@ class BlockHeader(Structure):
         return self.verify()
 
 
-class ScriptSig:
-    ...
+# class ScriptSig:
+#     ...
 
 
 @dataclass
 class TxIn:
     prev_tx_hash: bytes
     prev_tx_out_index: int
-    script: ScriptSig
+    script: bytes
     sequence: int = 0xFFFFFFFF
 
     def __bytes__(self) -> bytes:
@@ -108,7 +108,7 @@ class Tx:
 
     def __bytes__(self) -> bytes:
         ret = bytearray()
-        ret += int_to_bytes_le(self.version)
+        ret += int_to_bytes_little(self.version)
         # Add the number of inputs as a varint.
         ret += int_to_varint(len(self.inputs))
         # Convert all of the transaction inputs to raw bytes
@@ -124,8 +124,7 @@ class Tx:
         for txout in raw_outputs:
             ret += txout
         # Add locktime as a 4 byte little endian integer.
-        ret += bytes(4)
-        ret[-4:] = int_to_bytes_le(self.lock_time)
+        ret += struct.pack("<L", self.lock_time)
         return ret
 
 

@@ -1,5 +1,6 @@
 """Utility functions for conversions and parsing."""
 
+from dataclasses import dataclass
 import doctest
 import hashlib
 import struct
@@ -43,15 +44,15 @@ def int_to_varint(value: int) -> bytes:
     if value < 0 or value > UINT64_MAX:
         raise ValueError("Argument out of range.")
 
-    alloc, pref = 1, 0xFD
     if value < 0xFD:
         return bytes([value])
-    elif value <= UINT16_MAX:
-        alloc, fmt = alloc + 2, "<H"
+
+    if value <= UINT16_MAX:
+        alloc, pref, fmt = 3, 0xFD, "<H"
     elif value <= UINT32_MAX:
-        alloc, pref, fmt = alloc + 4, 0xFE, "<L"
+        alloc, pref, fmt = 5, 0xFE, "<L"
     else:
-        alloc, pref, fmt = alloc + 8, 0xFF, "<Q"
+        alloc, pref, fmt = 9, 0xFF, "<Q"
 
     buf = bytearray(alloc)
     buf[0] = pref
@@ -60,11 +61,6 @@ def int_to_varint(value: int) -> bytes:
     assert len(buf) in {1, 3, 5, 9}
 
     return buf
-
-
-def swap_ordering(hexstr: str) -> str:
-    """Returns a copy of a hex string with the byte order reversed."""
-    return bytes.fromhex(hexstr)[::-1].hex()
 
 
 def flip(func: Callable[[T, U], V]) -> Callable[[U, T], V]:
@@ -136,23 +132,29 @@ def partition(seq: Sequence[T], index: int) -> tuple[Sequence[T], Sequence[T]]:
     return seq[:index], seq[index:]
 
 
-def int_to_bytes_le(x: int) -> bytes:
+def int_to_bytes_little(x: int) -> bytes:
     """Convert an integer to bytes (little endian)."""
     return x.to_bytes(bytelength(x), byteorder="little")
 
 
-def int_to_bytes_be(x: int) -> bytes:
+def int_to_bytes_big(x: int) -> bytes:
     """Convert an integer to bytes (big endian)."""
     return x.to_bytes(bytelength(x), byteorder="big")
 
 
-def bytes_to_int_le(x: bytes) -> int:
+def bytes_to_int_little(x: bytes) -> int:
     """Convert bytes to an integer (little endian)."""
     return int.from_bytes(x, byteorder="little")
 
 
-def bytes_to_int_be(x: bytes) -> int:
+def bytes_to_int_big(x: bytes) -> int:
+    """Convert bytes to an integer (big endian)."""
     return int.from_bytes(x, byteorder="big")
+
+
+def uint256_to_bytes_big(x: int) -> bytes:
+    """Convert an unsigned 256 bit integer to bytes (big endian)."""
+    return x.to_bytes(32, byteorder="big")
 
 
 def timestamp() -> int:
