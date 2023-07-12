@@ -11,13 +11,11 @@ References: https://en.bitcoin.it/wiki/Script
 
 from dataclasses import dataclass
 from enum import IntEnum
-from itertools import starmap
-from typing import Any, NoReturn
+from hashlib import sha256
+from operator import add, eq, lt, ne, sub
+from typing import Any, Callable, NoReturn, Self
 
-try:
-    from ..utils import hash160
-except ImportError:
-    from utils import hash160
+from src.utils import hash160, sha256d
 
 # Eventually a new class is going to be made to hold the script stack.
 
@@ -156,8 +154,14 @@ class Opcode:
     def __int__(self) -> int:
         return self.value
 
+    def __str__(self) -> str:
+        return self.name
+
     def __eq__(self, other: int) -> bool:
         return int(self) == other
+
+    def __hash__(self) -> int:
+        return hash(self.value)
 
 
 class DisabledOpcodeError(Exception):
@@ -168,14 +172,18 @@ class EmptyStackError(Exception):
     ...
 
 
-def expected_operands(n: int):
+def _make_opcode(operands: int = 0):
     def wrapper(f):
         def inner():
-            if len(stack) < n:
+            if len(stack) < operands:
                 raise EmptyStackError(
-                    f"Expected {n} arguments, got {len(stack)} arguments instead."
+                    f"Expected {operands} arguments, got {len(stack)} arguments instead."
                 )
-            f()
+            if operands == 0:
+                stack.append(f())
+            else:
+                args = [stack.pop() for _ in range(operands)]
+                stack.append(f(*args))
 
         return inner
 
@@ -186,62 +194,37 @@ def op_disabled() -> NoReturn:
     raise DisabledOpcodeError("Opcode is disabled.")
 
 
-@expected_operands(2)
-def op_add() -> None:
-    x, y = stack.pop(), stack.pop()
-    stack.append(x + y)
+op_0 = _make_opcode()(bytes)
+op_false = _make_opcode()(bytes)
+op_1negate = _make_opcode()(lambda: -1)
+op_1 = _make_opcode()(lambda: 1)
+op_true = _make_opcode()(lambda: 1)
+
+op_nop = lambda: None
+
+op_depth = _make_opcode()(lambda: len(stack))
+op_drop = _make_opcode(1)(lambda: None)
+
+op_add = _make_opcode(2)(add)
+op_sub = _make_opcode(2)(sub)
+op_equal = _make_opcode(2)(eq)
+op_numnotequal = _make_opcode(2)(ne)
+op_lessthan = _make_opcode(2)(lt)
+op_dup = _make_opcode()(lambda: stack[-1])
+op_hash160 = _make_opcode(1)(hash160)
+op_sha256 = _make_opcode(1)(lambda x: sha256(x).digest())
+op_hash256 = _make_opcode(1)(sha256d)
 
 
-@expected_operands(2)
-def op_sub() -> None:
-    x, y = stack.pop(), stack.pop()
-    stack.append(x - y)
+OPCODE_MAP = dict.fromkeys(
+    Opcodes._member_names_, op_disabled
+)  # type: dict[str, Callable[[], Any]]
+OPCODE_MAP.update(
+    ((name.upper(), globals()[name]) for name in globals() if name.startswith("op_")),
+)
 
 
-@expected_operands(2)
-def op_equal() -> None:
-    x, y = stack.pop(), stack.pop()
-    stack.append(x == y)
-
-
-@expected_operands(2)
-def op_numnotequal() -> None:
-    x, y = stack.pop(), stack.pop()
-    stack.append(x != y)
-
-
-@expected_operands(2)
-def op_lessthan() -> None:
-    x, y = stack.pop(), stack.pop()
-    stack.append(x < y)
-
-
-@expected_operands(2)
-def op_dup() -> None:
-    stack.append(stack[-1])
-
-
-@expected_operands(1)
-def op_hash160() -> None:
-    stack.append(hash160(stack.pop()))
-
-
-opcode_list = list(starmap(Opcode, Opcodes.__members__.items()))
-opcode_map = {opcode.name: opcode for opcode in opcode_list}
-
-# Opcode functions (more to be added, WIP).
-opcode_map["OP_ADD"].func = op_add
-opcode_map["OP_SUB"].func = op_sub
-opcode_map["OP_MUL"].func = op_disabled
-opcode_map["OP_EQUAL"].func = op_equal
-
-opcode_map["OP_NUMNOTEQUAL"].func = op_numnotequal
-opcode_map["OP_LESSTHAN"].func = op_lessthan
-
-
-if __name__ == "__main__":
-    stack.append(3)
-    stack.append(4)
-    print(len(stack))
-    op_add()
-    print(stack)
+class Script:
+    @classmethod
+    def from_bytes(cls, buf: bytes) -> Self:
+        ...
