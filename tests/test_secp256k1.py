@@ -64,7 +64,7 @@ def test_point_add() -> None:
 
 
 def test_point_mul() -> None:
-    p = Point.from_int(G)
+    p = Point._make(G)
     assert (p * 2).affine() == (
         0xC6047F9441ED7D6D3045406E95C07CD85C778E4B8CEF3CA7ABAC09B95C709EE5,
         0x1AE168FEA63DC339A3C58419466CEAEEF7F632653266D0E1236431A950CFE52A,

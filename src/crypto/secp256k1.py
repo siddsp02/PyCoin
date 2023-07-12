@@ -17,28 +17,21 @@ from __future__ import annotations
 import struct
 from typing import NamedTuple, Self
 
-from ..utils import bits
+from ..utils import bits, int_to_bytes_big, modinv
 
-CURVE = (p, a, b, G, n, h) = (
-    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F,
-    0x0,
-    0x7,
-    0x0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798,
-    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141,
-    0x1,
-)
+P = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
+A = 0x0
+B = 0x7
+N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+H = 0x1
+
+INFINITY = (0, 1, 0)  # Coordinates for point at infinity.
 
 # fmt: off
 
-# By default, Projective/Jacobian coordinates are used to represent points
-# since they are much faster for Point arithmetic, due to modular inverse
-# calculations being computationally expensive.
-
-# Another benefit to using Projective coordinates over Affine coordinates
-# is the point at infinity having a defined representation as a point at
-# (0, 1, 0).
-
 class Point(NamedTuple):
+    """Represents a point on an Elliptic Curve using projective coordinates."""
+    
     x: int
     y: int
     z: int = 1  # For affine coordinate conversion.
@@ -55,8 +48,8 @@ class Point(NamedTuple):
         pref, xbin = struct.unpack(">B32s", data)
         x = int.from_bytes(xbin, byteorder="big")
         if pref in {0x2, 0x3} and len(data) == 33:
-            curve = (x*x*x + b) % p
-            y = tonelli(curve, p)
+            curve = (x*x*x + B) % P
+            y = tonelli(curve, P)
             if y is None:
                 raise ValueError("Invalid point (bad x coord).")
         elif pref == 0x4 and len(data) == 65:
@@ -71,34 +64,40 @@ class Point(NamedTuple):
 
     def affine(self) -> tuple[int, int]:
         (x, y, z) = self
-        zi = pow(z, -1, p)
-        zi_2 = zi*zi
-        zi_3 = zi*zi_2
-        x, y = x*zi_2 % p, y*zi_3 % p 
+        zi = modinv(z, P)
+        zi_2 = zi*zi % P
+        zi_3 = zi*zi_2 % P
+        x, y = x*zi_2 % P, y*zi_3 % P 
         return (x, y)
 
     @property
     def on_curve(self) -> bool:
         x, y = self.affine()
-        return (x*x*x + b) % p == y*y % p
+        x_3 = x*x*x % P
+        return (x_3 + B) % P == y*y % P
 
     def double(self) -> Self:
         (x, y, z) = self
         if y == 0:
             return type(self)(0, 1, 0)
-        y_2 = y*y % p
-        y_4 = y_2*y_2 % p
-        x_2 = x*x % p
-        s = 4*x*y_2 % p
-        m = (3*x_2) % p
-        x3 = (m*m - 2*s) % p
-        y3 = (m * (s-x3) - 8*y_4) % p
-        z3 = 2*y*z % p
+        y_2 = y*y % P
+        y_4 = y_2*y_2 % P
+        x_2 = x*x % P
+        s = 4*x*y_2 % P
+        m = (3*x_2) % P
+        x3 = (m*m - 2*s) % P
+        y3 = (m * (s-x3) - 8*y_4) % P
+        z3 = 2*y*z % P
         return type(self)(x3, y3, z3)
         
 
     def __str__(self) -> str:
         return f"{*self,}"
+
+    def __bytes__(self) -> bytes:
+        # When converted to binary, uncompressed format is assumed.
+        x, y = self.affine()
+        return struct.pack(">B32s32s", 0x4, int_to_bytes_big(x), int_to_bytes_big(y))
 
     def __add__(self, other: Self) -> Self:
         """Addition of two projective/jacobian coordinate points using "add-2007-bl"
@@ -124,34 +123,34 @@ class Point(NamedTuple):
             (x, y, z) = self
             if y == 0:
                 return type(self)(0, 1, 0)
-            y_2 = y*y % p
-            y_4 = y_2*y_2 % p
-            x_2 = x*x % p
-            s = 4*x*y_2 % p
-            m = (3*x_2) % p
-            x3 = (m*m - 2*s) % p
-            y3 = (m * (s-x3) - 8*y_4) % p
-            z3 = 2*y*z % p
+            y_2 = y*y % P
+            y_4 = y_2*y_2 % P
+            x_2 = x*x % P
+            s = 4*x*y_2 % P
+            m = (3*x_2) % P
+            x3 = (m*m - 2*s) % P
+            y3 = (m * (s-x3) - 8*y_4) % P
+            z3 = 2*y*z % P
         else:
             (x1, y1, z1) = self
             (x2, y2, z2) = other
-            z1_2 = z1*z1 % p
-            z2_2 = z2*z2 % p
-            u1 = x1*z2_2 % p
-            u2 = x2*z1_2 % p
-            s1 = y1*z2*z2_2 % p
-            s2 = y2*z1*z1_2 % p
-            h = (u2-u1) % p
-            t = 2*h % p
-            i = t*t % p
-            j = h*i % p
-            r = 2 * (s2-s1) % p
-            v = u1*i % p
-            x3 = (r*r % p - j - 2*v) % p
-            y3 = (r*(v-x3) - 2*s1*j) % p
-            zs = (z1+z2) % p
-            zs_2 = zs*zs % p
-            z3 = (zs_2-z1_2-z2_2) * h % p
+            z1_2 = z1*z1 % P
+            z2_2 = z2*z2 % P
+            u1 = x1*z2_2 % P
+            u2 = x2*z1_2 % P
+            s1 = y1*z2*z2_2 % P
+            s2 = y2*z1*z1_2 % P
+            h = (u2-u1) % P
+            t = 2*h % P
+            i = t*t % P
+            j = h*i % P
+            r = 2 * (s2-s1) % P
+            v = u1*i % P
+            x3 = (r*r % P - j - 2*v) % P
+            y3 = (r*(v-x3) - 2*s1*j) % P
+            zs = (z1+z2) % P
+            zs_2 = zs*zs % P
+            z3 = (zs_2-z1_2-z2_2) * h % P
         return type(self)(x3, y3, z3)
 
     __radd__ = __add__
@@ -173,7 +172,8 @@ class Point(NamedTuple):
             tmp = tmp.double()
         return res
 
-    __rmul__ = __mul__  # type: ignore
+    def __rmul__(self, other: int) -> Self:
+        return self * other
 
 
 def jacobi(n: int, k: int) -> int:
@@ -228,9 +228,7 @@ def tonelli(n: int, p: int) -> int | None:
     q, s = p - 1, 0
     while q % 2 == 0:
         q, s = q >> 1, s + 1
-    z = next(
-        z for z in range(p) if jacobi(z, p) == -1
-    )
+    z = next(z for z in range(p) if jacobi(z, p) == -1)
     m, c, t, r = s, pow(z, q, p), pow(n, q, p), pow(n, (q+1) // 2, p)
     while t != 0 and t != 1:
         # Congruence checks to verify the loop invariant (see references).
@@ -247,3 +245,10 @@ def tonelli(n: int, p: int) -> int | None:
         b2 = b*b % p
         m, c, t, r = i, b2, t*b2 % p, r*b % p
     return r if t == 1 else 0
+
+
+G = Point(
+    0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798,
+    0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8,
+    0x1,
+)
