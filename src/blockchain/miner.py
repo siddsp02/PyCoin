@@ -52,7 +52,7 @@ class BlockHeader(Structure):
     @classmethod
     def from_json(cls, filename: str, fields: dict[str, int] | None = None) -> Self:
         """Returns a new BlockHeader instance by parsing a JSON."""
-        return BlockHeader.from_buffer(parse_block_json(filename, fields))
+        return BlockHeader.from_buffer(parse_block_json(filename, fields)) # type: ignore
 
     def verify(self) -> bool:
         """Checks if the block header is valid."""
