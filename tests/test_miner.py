@@ -1,5 +1,3 @@
-from itertools import repeat
-import random
 import math
 
 from src.blockchain.miner import *
@@ -15,7 +13,7 @@ def test_verify() -> None:
         + "f2b9441a"
         + "42a14695"
     )
-    blk = BlockHeader.from_buffer(buf)
+    blk = BlockHeader.from_buffer(buf)  # type: ignore
     assert blk.verify()
     buf[20] += 1
     assert not blk.verify()
@@ -69,7 +67,7 @@ def test_check_nonce() -> None:
         + "f2b9441a"
         + "42a14695"
     )
-    block = BlockHeader.from_buffer(buf)
+    block = BlockHeader.from_buffer(buf) # type: ignore
     # Check a large, but limited range of values.
     for i in range(2_504_400_000, 2_504_445_000):
         val = block._check_nonce(i)
