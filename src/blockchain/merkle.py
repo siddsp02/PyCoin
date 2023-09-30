@@ -1,5 +1,7 @@
 """The merkle tree for Bitcoin."""
 
+import base64
+from dataclasses import dataclass
 from functools import reduce
 from itertools import starmap, zip_longest
 from typing import Iterable, Iterator, Literal, Sequence
@@ -11,6 +13,56 @@ LEFT, RIGHT = 0, 1
 Direction = Literal[0] | Literal[1]
 ProofElement = tuple[Direction, bytes]
 MerkleProof = list[ProofElement]
+
+
+@dataclass
+class MerkleTree:
+    txs: list[bytes]
+
+    def __str__(self) -> str:
+        # Base 64 is used to make string representation shorter.
+        # This might be changed to used hexadecimal in the future.
+
+        def b64(s):
+            """Internal base64 conversion utility."""
+            return base64.b64encode(s).decode()
+
+        # For a better informal string representation, the string length
+        # of the first level in the merkle tree is taken, and then the
+        # levels that come after are formatted to be a centered string
+        # of the same size. The code here is a little bit hard to read,
+        # but will be refactored in the future.
+
+        levels = self.levels
+        size = len(" ".join(map(b64, levels[0])))
+        # Each level is on its own line when converted to a string.
+        ret = "\n".join(
+            f"{' '.join(map(b64, level)):^{size}}" for level in reversed(levels)
+        )
+        return ret
+
+    @property
+    def root(self) -> bytes:
+        """Returns the root hash of the merkle tree."""
+        return hash_tree(self.txs)
+
+    @property
+    def levels(self) -> list[list[bytes]]:
+        """Returns a list of the levels of the merkle tree."""
+        return list(self.iter_levels())
+
+    def iter_levels(self) -> Iterator[list[bytes]]:
+        return iter_levels(self.txs)
+
+    def get_proof(self, tx: bytes) -> MerkleProof:
+        """Returns a proof of inclusion for a transaction hash."""
+        return create_proof(self.txs, tx)
+
+    def verify(self, tx: bytes, proof: MerkleProof) -> bool:
+        """Verifies that a transaction is in the merkle tree when given
+        its corresponding proof and transaction hash.
+        """
+        return verify_proof(tx, proof, self.root)
 
 
 def iter_levels(merkle_tree: Iterable[bytes]) -> Iterator[list[bytes]]:
