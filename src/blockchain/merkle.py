@@ -13,6 +13,17 @@ ProofElement = tuple[Direction, bytes]
 MerkleProof = list[ProofElement]
 
 
+def iter_levels(merkle_tree: Iterable[bytes]) -> Iterator[list[bytes]]:
+    """Iterates over the levels of a merkle tree, each new level being
+    the result of the hashed pairs of items from the previous level.
+    """
+    level = list(merkle_tree)
+    while len(level) > 1:
+        yield level
+        level = list(starmap(hash_pair, pairs(level)))
+    yield level
+
+
 def pairs(values: Sequence[bytes]) -> Iterator[tuple[bytes, bytes]]:
     """Groups a sequence of bytes into pairs. If the length of
     the sequence is odd, the last item is paired with itself.
@@ -51,10 +62,8 @@ def hash_tree(merkle_tree: Iterable[bytes]) -> bytes:
         - https://gutier.io/post/programming-tutorial-blockchain-haskell-merkle-tree/
         - https://en.bitcoin.it/wiki/Protocol_documentation#Merkle%5FTrees
     """
-    tree = list(merkle_tree)
-    while len(tree) > 1:
-        tree[:] = starmap(hash_pair, pairs(tree))
-    return tree.pop()
+    *_, result = iter_levels(merkle_tree)
+    return result.pop()
 
 
 def create_proof(merkle_tree: Iterable[bytes], tx: bytes) -> MerkleProof:

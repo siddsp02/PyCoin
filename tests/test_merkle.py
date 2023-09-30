@@ -1,6 +1,8 @@
+from hashlib import sha256
 from typing import NamedTuple
 
-from src.blockchain.merkle import hash_pair, hash_tree
+from src.blockchain.merkle import hash_pair, hash_tree, iter_levels
+from src.utils import sha256d
 
 
 class BlockTxsAndHash(NamedTuple):
@@ -91,6 +93,26 @@ BLOCKS = [
         hash="511c8de798f61c88b61ed6adebd0d80856ae247877d63ae9993a2df1099634f5",
     ),
 ]
+
+
+def test_iter_levels() -> None:
+    txs = list(
+        map(
+            bytes.fromhex,
+            [
+                "51d37bdd871c9e1f4d5541be67a6ab625e32028744d7d4609d0c37747b40cd2d",
+                "60c25dda8d41f8d3d7d5c6249e2ea1b05a25bf7ae2ad6d904b512b31f997e1a1",
+                "01f314cdd8566d3e5dbdd97de2d9fbfbfd6873e916a00d48758282cbb81a45b9",
+                "b519286a1040da6ad83c783eb2872659eaf57b1bec088e614776ffe7dc8f6d01",
+            ],
+        )
+    )
+    a, b, c, d = txs
+    lst = list(iter_levels(txs))
+    ab = hash_pair(a, b)
+    cd = hash_pair(c, d)
+    abcd = hash_pair(ab, cd)
+    assert lst == [[a, b, c, d], [ab, cd], [abcd]]
 
 
 def test_hash_tree() -> None:
