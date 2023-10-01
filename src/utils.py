@@ -48,19 +48,13 @@ def int_to_varint(value: int) -> bytes:
         return bytes([value])
 
     if value <= UINT16_MAX:
-        alloc, pref, fmt = 3, 0xFD, "<H"
+        pref, fmt = 0xFD, "<BH"
     elif value <= UINT32_MAX:
-        alloc, pref, fmt = 5, 0xFE, "<L"
+        pref, fmt = 0xFE, "<BL"
     else:
-        alloc, pref, fmt = 9, 0xFF, "<Q"
+        pref, fmt = 0xFF, "<BQ"
 
-    buf = bytearray(alloc)
-    buf[0] = pref
-    struct.pack_into(fmt, buf, 1, value)
-
-    assert len(buf) in {1, 3, 5, 9}
-
-    return buf
+    return struct.pack(fmt, pref, value)
 
 
 def flip(func: Callable[[T, U], V]) -> Callable[[U, T], V]:
