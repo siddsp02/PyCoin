@@ -200,7 +200,7 @@ class Tx(BinaryHashable):
         ret += struct.pack("<L", self.lock_time)
         return bytes(ret)
 
-
+@dataclass
 class Block:
     magic: int
     header: BlockHeader
