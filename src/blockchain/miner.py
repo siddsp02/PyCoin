@@ -15,10 +15,23 @@ import struct
 from ctypes import Structure, c_char, c_uint32
 from dataclasses import dataclass
 from functools import partial, singledispatch
-from typing import Self
+from typing import Self, Sequence, SupportsBytes
 
-from ..utils import bytes_to_int_little, int_to_bytes_little, int_to_varint, sha256d
+from ..encoding_schemes.varint import varint
+from ..utils import bytes_to_int_little, sha256d
 from .merkle import hash_tree
+
+
+def list_to_bytes(values: Sequence[SupportsBytes], encode_size: bool = True) -> bytes:
+    """Converts a list of binary types to a raw buffer of bytes.
+    This encodes the length of the data using `varint` encoding.
+    """
+    size = len(values)
+    ret = bytearray()
+    if encode_size:
+        ret += varint.read(size)
+    ret += b"".join(map(bytes, values))
+    return ret
 
 
 class BlockHeader(Structure):
@@ -52,7 +65,7 @@ class BlockHeader(Structure):
     @classmethod
     def from_json(cls, filename: str, fields: dict[str, int] | None = None) -> Self:
         """Returns a new BlockHeader instance by parsing a JSON."""
-        return BlockHeader.from_buffer(parse_block_json(filename, fields)) # type: ignore
+        return cls.from_buffer(parse_block_json(filename, fields))  # type: ignore
 
     def verify(self) -> bool:
         """Checks if the block header is valid."""
@@ -66,10 +79,6 @@ class BlockHeader(Structure):
         return self.verify()
 
 
-# class ScriptSig:
-#     ...
-
-
 @dataclass
 class TxIn:
     prev_tx_hash: bytes
@@ -78,7 +87,7 @@ class TxIn:
     sequence: int = 0xFFFFFFFF
 
     def __bytes__(self) -> bytes:
-        ...
+        return b""
 
 
 @dataclass
@@ -87,7 +96,7 @@ class TxOut:
     script: bytes
 
     def __bytes__(self) -> bytes:
-        ...
+        return b""
 
 
 @dataclass
@@ -99,7 +108,7 @@ class Tx:
 
     @property
     def valid(self) -> bool:
-        ...
+        return NotImplemented
 
     @property
     def hash(self) -> bytes:
@@ -108,24 +117,14 @@ class Tx:
 
     def __bytes__(self) -> bytes:
         ret = bytearray()
-        ret += int_to_bytes_little(self.version)
-        # Add the number of inputs as a varint.
-        ret += int_to_varint(len(self.inputs))
-        # Convert all of the transaction inputs to raw bytes
-        # and write into the return buffer.
-        raw_inputs = map(bytes, self.inputs)
-        for txin in raw_inputs:
-            ret += txin
-        # Add the number of outputs as a varint.
-        ret += int_to_varint(len(self.outputs))
-        # Convert all of the transaction outputs to raw bytes
-        # and write into the return buffer.
-        raw_outputs = map(bytes, self.outputs)
-        for txout in raw_outputs:
-            ret += txout
+        # Add version number as a 4 byte little endian integer.
+        ret += struct.pack("<L", self.version)
+        # Convert inputs and outputs to raw binary data (varint and data).
+        ret += list_to_bytes(self.inputs)
+        ret += list_to_bytes(self.outputs)
         # Add locktime as a 4 byte little endian integer.
         ret += struct.pack("<L", self.lock_time)
-        return ret
+        return bytes(ret)
 
 
 @dataclass
@@ -142,8 +141,8 @@ class Block:
     hash = merkle_root
 
     @property
-    def blocksize(self) -> int:
-        ...
+    def blocksize(self) -> int:  # type: ignore
+        return 0
 
     def add(self, tx: Tx) -> None:
         """Adds a transaction to the block."""
@@ -204,7 +203,7 @@ def parse_block_json(filename: str, fields: dict[str, int] | None = None) -> byt
         struct.pack_into("<32s", header, offset, bytes.fromhex(value)[::-1])
 
     @pack_bytes.register
-    def _(value: int, offset: int = 0) -> None:
+    def _(value: int, offset: int = 0) -> None:  # type: ignore
         struct.pack_into("<I", header, offset, value)
 
     # Parse JSON fields, and pack the values
