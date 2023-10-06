@@ -67,8 +67,17 @@ def test_check_nonce() -> None:
         + "f2b9441a"
         + "42a14695"
     )
-    block = BlockHeader.from_buffer(buf) # type: ignore
+    block = BlockHeader.from_buffer(buf)  # type: ignore
     # Check a large, but limited range of values.
     for i in range(2_504_400_000, 2_504_445_000):
         val = block._check_nonce(i)
         assert val if i == 2504433986 else not val
+
+
+def test_list_to_bytes() -> None:
+    lst = [b"abc", b"def", b"ghi"]
+    assert list_to_bytes(lst, encode_size=False) == b"abcdefghi"
+    assert list_to_bytes(lst) == bytes([3]) + b"abcdefghi"
+    lst = []
+    assert list_to_bytes([]) == bytes([0])
+    assert list_to_bytes([], encode_size=False) == b""
