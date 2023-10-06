@@ -15,10 +15,9 @@ import json
 import math
 from operator import concat
 import struct
-from ctypes import Structure, c_char, c_uint32
 from dataclasses import dataclass
 from functools import partial, singledispatch
-from typing import Protocol, Self, Sequence, SupportsBytes, Any
+from typing import Self, Sequence, SupportsBytes, Any
 
 from ..encoding_schemes.varint import varint
 from ..utils import bytes_to_int_little, sha256d
