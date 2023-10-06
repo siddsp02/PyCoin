@@ -9,13 +9,16 @@ along with merkle tree hashing, difficulty adjustment, and
 timestamp updates -- the whole thing.
 """
 
+from abc import ABC, abstractmethod
+from itertools import accumulate, chain
 import json
 import math
+from operator import concat
 import struct
 from ctypes import Structure, c_char, c_uint32
 from dataclasses import dataclass
 from functools import partial, singledispatch
-from typing import Self, Sequence, SupportsBytes
+from typing import Protocol, Self, Sequence, SupportsBytes, Any
 
 from ..encoding_schemes.varint import varint
 from ..utils import bytes_to_int_little, sha256d
@@ -34,21 +37,47 @@ def list_to_bytes(values: Sequence[SupportsBytes], encode_size: bool = True) -> 
     return ret
 
 
-class BlockHeader(Structure):
-    _fields_ = [
-        ("version", c_uint32),
-        ("prev_block", c_char * 32),
-        ("merkle_root", c_char * 32),
-        ("timestamp", c_uint32),
-        ("bits", c_uint32),
-        ("nonce", c_uint32),
-    ]
+class BinaryHashable(ABC):
+    @abstractmethod
+    def get_hash_data(self) -> bytes:
+        ...
+
+    @property
+    def hash(self) -> bytes:
+        return sha256d(self.get_hash_data())
+
+    @abstractmethod
+    def __bytes__(self) -> bytes:
+        ...
+
+
+def prepend(x, it):
+    return chain((0,), it)
+
+
+class BlockHeader(BinaryHashable):
+    def __init__(
+        self,
+        version: int,
+        prev_block: bytes,
+        merkle_root: bytes,
+        timestamp: int,
+        bits: int,
+        nonce: int,
+    ) -> None:
+        self._data = bytearray(80)
+        self.version = version
+        self.prev_block = prev_block
+        self.merkle_root = merkle_root
+        self.timestamp = timestamp
+        self.bits = bits
+        self.nonce = nonce
 
     def __repr__(self) -> str:
-        attrs = dict(self._fields_)
+        attrs = ["version", "prev_block", "merkle_root", "timestamp", "bits", "nonce"]
         vals = map(partial(getattr, self), attrs)
         return "{}({})".format(
-            type(self).__name__, ", ".join(map("{}={}".format, attrs, vals))
+            type(self).__name__, ", ".join(map("{}={}".format, attrs, vals))  # type: ignore
         )
 
     @property
@@ -57,19 +86,67 @@ class BlockHeader(Structure):
         q = (self.bits & 0xFF000000) >> 24
         return p * 2 ** (8 * (q - 3))
 
-    @property
-    def hash(self) -> bytes:
-        """The hash of the block header."""
-        return sha256d(memoryview(self))
+    def get_hash_data(self) -> bytes:
+        return bytes(self._data)
+
+    @classmethod
+    def _fields_types_and_offsets(cls):
+        # Typecodes are the codes for the field/attribute type.
+        typecodes = ["L", "32s", "32s", "L", "L", "L"]
+        # Attributes of the "struct".
+        attrs = ["version", "prev_block", "merkle_root", "timestamp", "bits", "nonce"]
+        # Offset formats (for calculating offset with struct.calcsize)
+        offset_fmts = accumulate(typecodes, concat)
+        # Actual attribute offsets
+        offsets = prepend(0, map(struct.calcsize, offset_fmts))  # type: ignore
+        return dict(zip(attrs, zip(typecodes, offsets)))
+
+    def verify(self) -> bool:
+        """Checks if the block header is valid."""
+        return bytes_to_int_little(self.hash) < self.target
 
     @classmethod
     def from_json(cls, filename: str, fields: dict[str, int] | None = None) -> Self:
         """Returns a new BlockHeader instance by parsing a JSON."""
         return cls.from_buffer(parse_block_json(filename, fields))  # type: ignore
 
-    def verify(self) -> bool:
-        """Checks if the block header is valid."""
-        return bytes_to_int_little(self.hash) < self.target
+    # This was a hack for ensuring that the interface and behaviour remained mostly
+    # the same as the previous version of this class. There wasn't any clean fix for this.
+    # Essentially, there is an underlying buffer of memory
+    # tied to this class, and attributes are actually fetched from raw binary data.
+
+    def __getattr__(self, name: str) -> Any:
+        if name == "_data":
+            return super().__getattribute__(name)
+        try:
+            typecode, offset = type(self)._fields_types_and_offsets()[name]
+            return struct.unpack_from(typecode, self._data, offset)[0]
+        except KeyError:
+            raise
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "_data":
+            super().__setattr__(name, value)
+        else:
+            try:
+                typecode, offset = type(self)._fields_types_and_offsets()[name]
+                struct.pack_into(typecode, self._data, offset, value)
+            except KeyError:
+                raise
+
+    # This was strictly to keep the interface the same. This method will
+    # eventually be removed.
+    @classmethod
+    def from_buffer(cls, buf: bytes) -> Self:
+        """Note that the behaviour of this method has changed.
+        The object does not point to teh same area in memory provided
+        to this method.
+        """
+        args = struct.unpack("<L32s32s3L", buf)
+        return cls(*args)
+
+    def __bytes__(self) -> bytes:
+        return bytes(self._data)
 
     def _check_nonce(self, nonce: int) -> bool:
         """Checks a nonce to see if a valid hash is produced.
@@ -80,7 +157,7 @@ class BlockHeader(Structure):
 
 
 @dataclass
-class TxIn:
+class TxIn(BinaryHashable):
     prev_tx_hash: bytes
     prev_tx_out_index: int
     script: bytes
@@ -91,7 +168,7 @@ class TxIn:
 
 
 @dataclass
-class TxOut:
+class TxOut(BinaryHashable):
     value: int
     script: bytes
 
@@ -100,7 +177,7 @@ class TxOut:
 
 
 @dataclass
-class Tx:
+class Tx(BinaryHashable):
     version: int
     inputs: list[TxIn]
     outputs: list[TxOut]
@@ -110,10 +187,8 @@ class Tx:
     def valid(self) -> bool:
         return NotImplemented
 
-    @property
-    def hash(self) -> bytes:
-        """The transaction hash/id."""
-        return sha256d(bytes(self))
+    def get_hash_data(self) -> bytes:
+        return bytes(self)
 
     def __bytes__(self) -> bytes:
         ret = bytearray()
@@ -127,7 +202,6 @@ class Tx:
         return bytes(ret)
 
 
-@dataclass
 class Block:
     magic: int
     header: BlockHeader

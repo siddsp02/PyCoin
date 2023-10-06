@@ -15,7 +15,7 @@ def test_verify() -> None:
     )
     blk = BlockHeader.from_buffer(buf)  # type: ignore
     assert blk.verify()
-    buf[20] += 1
+    blk._data[20] += 1
     assert not blk.verify()
 
 
