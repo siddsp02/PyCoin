@@ -109,7 +109,7 @@ class FiniteFieldElement:
                 raise ValueError("Elements are not a part of the same finite field.")
             return type(self)(self.value - other.value, self.mod)
         if isinstance(other, int):
-            return type(self)((self.value - other) % self.mod, self.mod)
+            return type(self)(self.value - other, self.mod)
         raise TypeError(
             "Subtraction of {} is not allowed with {}".format(
                 type(self).__name__, type(other).__name__
@@ -120,11 +120,9 @@ class FiniteFieldElement:
         if isinstance(other, type(self)):
             if other.mod != self.mod:
                 raise ValueError("Elements are not a part of the same finite field.")
-            value = (self.value + other.value) % self.mod
-            return type(self)(value, self.mod)
+            return type(self)(self.value * other.value, self.mod)
         if isinstance(other, int):
-            value = (self.value * other) % self.mod
-            return type(self)(value, self.mod)
+            return type(self)(self.value * other, self.mod)
         raise TypeError(
             "Multiplication of {} is not allowed with {}".format(
                 type(self).__name__, type(other).__name__
