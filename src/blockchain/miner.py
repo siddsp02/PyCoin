@@ -52,7 +52,7 @@ class BlockHeader(Structure):
     @classmethod
     def from_json(cls, filename: str, fields: dict[str, int] | None = None) -> Self:
         """Returns a new BlockHeader instance by parsing a JSON."""
-        return BlockHeader.from_buffer(parse_block_json(filename, fields))
+        return cls.from_buffer(parse_block_json(filename, fields))
 
     def verify(self) -> bool:
         """Checks if the block header is valid."""
@@ -78,7 +78,7 @@ class TxIn:
     sequence: int = 0xFFFFFFFF
 
     def __bytes__(self) -> bytes:
-        ...
+        return NotImplemented
 
 
 @dataclass
@@ -87,7 +87,7 @@ class TxOut:
     script: bytes
 
     def __bytes__(self) -> bytes:
-        ...
+        return NotImplemented
 
 
 @dataclass
@@ -99,7 +99,7 @@ class Tx:
 
     @property
     def valid(self) -> bool:
-        ...
+        return NotImplemented
 
     @property
     def hash(self) -> bytes:
@@ -143,7 +143,7 @@ class Block:
 
     @property
     def blocksize(self) -> int:
-        ...
+        return NotImplemented
 
     def add(self, tx: Tx) -> None:
         """Adds a transaction to the block."""
@@ -204,7 +204,7 @@ def parse_block_json(filename: str, fields: dict[str, int] | None = None) -> byt
         struct.pack_into("<32s", header, offset, bytes.fromhex(value)[::-1])
 
     @pack_bytes.register
-    def _(value: int, offset: int = 0) -> None:
+    def _(value: int, offset: int = 0) -> None:  # type: ignore
         struct.pack_into("<I", header, offset, value)
 
     # Parse JSON fields, and pack the values
