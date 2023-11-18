@@ -1,3 +1,5 @@
+import pytest
+
 from src.secp256k1 import G, Point, jacobi, tonelli
 
 
@@ -70,24 +72,16 @@ def test_point_mul() -> None:
     )
 
 
-def test_jacobi() -> None:
-    vectors = [
-        ((1, 1), 1),
-        ((5, 3), -1),
-        ((5, 11), 1),
-        ((7, 3), 1),
-        ((21, 13), -1),
-    ]
-    for (n, k), res in vectors:
-        assert jacobi(n, k) == res
+@pytest.mark.parametrize(
+    "args, res", [((1, 1), 1), ((5, 3), -1), ((5, 11), 1), ((7, 3), 1), ((21, 13), -1)]
+)
+def test_jacobi(args: tuple[int, int], res: int) -> None:
+    assert jacobi(*args) == res
 
 
-def test_tonelli() -> None:
-    vectors = [
-        ((44402, 100049), 30468),
-        ((10, 13), 7),
-        ((56, 101), 37),
-        ((1030, 10009), 1632),
-    ]
-    for (n, p), res in vectors:
-        assert tonelli(n, p) == res
+@pytest.mark.parametrize(
+    "args, res",
+    [((44402, 100049), 30468), ((10, 13), 7), ((56, 101), 37), ((1030, 10009), 1632)],
+)
+def test_tonelli(args: tuple[int, int], res: int) -> None:
+    assert tonelli(*args) == res
