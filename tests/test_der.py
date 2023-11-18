@@ -1,4 +1,4 @@
-import src.der as der
+from src import der
 
 
 def test_der_signature_encode() -> None:
