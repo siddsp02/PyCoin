@@ -1,8 +1,8 @@
 import multiprocessing as mp
 import time
 
-from src.blockchain.miner import BlockHeader
 from src.constants import UINT32_MAX, WORKERS
+from src.miner import BlockHeader
 
 
 def main() -> None:
