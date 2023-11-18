@@ -1,4 +1,4 @@
-from src.script.script import stack, OPCODE_MAP
+from src.script import OPCODE_MAP, stack
 
 
 def test_basic_ops_with_stack() -> None:

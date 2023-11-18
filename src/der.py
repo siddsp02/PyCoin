@@ -1,6 +1,9 @@
 import struct
 
-from ..utils import bytes_to_int_big, int_to_bytes_big
+try:
+    from .utils import bytes_to_int_big, int_to_bytes_big
+except ImportError:
+    from utils import bytes_to_int_big, int_to_bytes_big
 
 
 def encode(sig: tuple[int, int]) -> bytes:

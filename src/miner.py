@@ -14,11 +14,24 @@ import math
 import struct
 from ctypes import Structure, c_char, c_uint32
 from dataclasses import dataclass
-from functools import partial, singledispatch
-from typing import Self
+from functools import partial, reduce, singledispatch
+from operator import iadd
+from typing import Self, SupportsBytes
 
-from ..utils import bytes_to_int_little, int_to_bytes_little, int_to_varint, sha256d
-from .merkle import hash_tree
+try:
+    from .constants import UINT32_MAX
+    from .merkle import hash_tree
+    from .utils import bytes_to_int_little, int_to_varint, sha256d
+except ImportError:
+    from constants import UINT32_MAX
+    from merkle import hash_tree
+    from utils import bytes_to_int_little, int_to_varint, sha256d
+
+
+def list_to_bytes(lst: list[SupportsBytes]) -> bytes:
+    ret = bytearray()
+    ret += int_to_varint(len(lst))
+    return reduce(iadd, map(bytes, lst), ret)
 
 
 class BlockHeader(Structure):
@@ -75,10 +88,10 @@ class TxIn:
     prev_tx_hash: bytes
     prev_tx_out_index: int
     script: bytes
-    sequence: int = 0xFFFFFFFF
+    sequence: int = UINT32_MAX
 
     def __bytes__(self) -> bytes:
-        return NotImplemented
+        return b""
 
 
 @dataclass
@@ -87,7 +100,7 @@ class TxOut:
     script: bytes
 
     def __bytes__(self) -> bytes:
-        return NotImplemented
+        return b""
 
 
 @dataclass
@@ -107,23 +120,9 @@ class Tx:
         return sha256d(bytes(self))
 
     def __bytes__(self) -> bytes:
-        ret = bytearray()
-        ret += int_to_bytes_little(self.version)
-        # Add the number of inputs as a varint.
-        ret += int_to_varint(len(self.inputs))
-        # Convert all of the transaction inputs to raw bytes
-        # and write into the return buffer.
-        raw_inputs = map(bytes, self.inputs)
-        for txin in raw_inputs:
-            ret += txin
-        # Add the number of outputs as a varint.
-        ret += int_to_varint(len(self.outputs))
-        # Convert all of the transaction outputs to raw bytes
-        # and write into the return buffer.
-        raw_outputs = map(bytes, self.outputs)
-        for txout in raw_outputs:
-            ret += txout
-        # Add locktime as a 4 byte little endian integer.
+        ret = struct.pack("<L", self.version)
+        ret += list_to_bytes(self.inputs)  # type: ignore
+        ret += list_to_bytes(self.outputs)  # type: ignore
         ret += struct.pack("<L", self.lock_time)
         return ret
 

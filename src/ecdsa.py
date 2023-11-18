@@ -7,11 +7,17 @@ import struct
 from itertools import repeat
 from typing import Iterable, NamedTuple, Self
 
-from src.constants import WORKERS
-from src.encoding_schemes import der
-from src.utils import extract_bits, int_to_bytes_big, modinv, sha256d
+try:
+    from . import der
+    from .constants import WORKERS
+    from .secp256k1 import INFINITY, G, N, P, Point
+    from .utils import extract_bits, int_to_bytes_big, modinv, sha256d
+except ImportError:
+    import der
+    from constants import WORKERS
+    from secp256k1 import INFINITY, G, N, P, Point
+    from utils import extract_bits, int_to_bytes_big, modinv, sha256d
 
-from .secp256k1 import INFINITY, G, N, P, Point
 
 random.seed(1)
 

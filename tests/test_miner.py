@@ -1,8 +1,12 @@
-from itertools import repeat
-import random
 import math
 
-from src.blockchain.miner import *
+from src.miner import (
+    BlockHeader,
+    difficulty,
+    hashrate_from_difficulty,
+    parse_block_json,
+    target,
+)
 
 
 def test_verify() -> None:

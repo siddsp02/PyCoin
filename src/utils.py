@@ -1,6 +1,5 @@
 """Utility functions for conversions and parsing."""
 
-from dataclasses import dataclass
 import doctest
 import hashlib
 import struct
@@ -10,9 +9,9 @@ from itertools import pairwise
 from typing import Callable, Iterator, Literal, Sequence, TypeVar
 
 try:
-    from constants import UINT16_MAX, UINT32_MAX, UINT64_MAX
-except ImportError:
     from .constants import UINT16_MAX, UINT32_MAX, UINT64_MAX
+except ImportError:
+    from constants import UINT16_MAX, UINT32_MAX, UINT64_MAX
 
 T = TypeVar("T")
 U = TypeVar("U")

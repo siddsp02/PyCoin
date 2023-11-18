@@ -17,7 +17,10 @@ from __future__ import annotations
 import struct
 from typing import NamedTuple, Self
 
-from ..utils import bits, int_to_bytes_big, modinv
+try:
+    from .utils import bits, int_to_bytes_big, modinv
+except ImportError:
+    from utils import bits, int_to_bytes_big, modinv
 
 P = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
 A = 0x0
@@ -250,5 +253,4 @@ def tonelli(n: int, p: int) -> int | None:
 G = Point(
     0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798,
     0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8,
-    0x1,
 )

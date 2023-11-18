@@ -4,7 +4,10 @@ from functools import reduce
 from itertools import starmap, zip_longest
 from typing import Iterable, Iterator, Literal, Sequence
 
-from ..utils import sha256d
+try:
+    from .utils import sha256d
+except ImportError:
+    from utils import sha256d
 
 LEFT, RIGHT = 0, 1
 

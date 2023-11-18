@@ -1,4 +1,4 @@
-from src.crypto.ecdsa import Signature
+from src.ecdsa import Signature
 
 
 def test_generation_and_verification() -> None:

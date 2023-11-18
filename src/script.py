@@ -15,7 +15,10 @@ from hashlib import sha256
 from operator import add, eq, lt, ne, sub
 from typing import Any, Callable, NoReturn, Self
 
-from src.utils import hash160, sha256d
+try:
+    from .utils import hash160, sha256d
+except ImportError:
+    from utils import hash160, sha256d
 
 # Eventually a new class is going to be made to hold the script stack.
 
