@@ -112,7 +112,7 @@ class Tx:
 
     @property
     def valid(self) -> bool:
-        return NotImplemented
+        ...
 
     @property
     def hash(self) -> bytes:
@@ -142,7 +142,7 @@ class Block:
 
     @property
     def blocksize(self) -> int:
-        return NotImplemented
+        ...
 
     def add(self, tx: Tx) -> None:
         """Adds a transaction to the block."""
