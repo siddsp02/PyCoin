@@ -8,17 +8,19 @@ from src.miner import (
     target,
 )
 
+# Block 125552
+TEST_BLOCK_BIN = bytearray.fromhex(
+    "01000000"
+    + "81cd02ab7e569e8bcd9317e2fe99f2de44d49ab2b8851ba4a308000000000000"
+    + "e320b6c2fffc8d750423db8b1eb942ae710e951ed797f7affc8892b0f1fc122b"
+    + "c7f5d74d"
+    + "f2b9441a"
+    + "42a14695"
+)
+
 
 def test_verify() -> None:
-    # Block 125552
-    buf = bytearray.fromhex(
-        "01000000"
-        + "81cd02ab7e569e8bcd9317e2fe99f2de44d49ab2b8851ba4a308000000000000"
-        + "e320b6c2fffc8d750423db8b1eb942ae710e951ed797f7affc8892b0f1fc122b"
-        + "c7f5d74d"
-        + "f2b9441a"
-        + "42a14695"
-    )
+    buf = TEST_BLOCK_BIN[:]
     blk = BlockHeader.from_buffer(buf)
     assert blk.verify()
     buf[20] += 1
@@ -27,14 +29,7 @@ def test_verify() -> None:
 
 def test_parse_block_json() -> None:
     blk = parse_block_json("example_blocks/125552.json")
-    assert blk == bytes.fromhex(
-        "01000000"
-        + "81cd02ab7e569e8bcd9317e2fe99f2de44d49ab2b8851ba4a308000000000000"
-        + "e320b6c2fffc8d750423db8b1eb942ae710e951ed797f7affc8892b0f1fc122b"
-        + "c7f5d74d"
-        + "f2b9441a"
-        + "42a14695"
-    )
+    assert blk == TEST_BLOCK_BIN
 
 
 def test_difficulty() -> None:
@@ -53,26 +48,8 @@ def test_hashrate_from_difficulty() -> None:
     assert math.isclose(hashrate, 2.68e20, rel_tol=0.25)
 
 
-def test_get_target() -> None:
-    block = bytes.fromhex(
-        "01000000"
-        + "81cd02ab7e569e8bcd9317e2fe99f2de44d49ab2b8851ba4a308000000000000"
-        + "e320b6c2fffc8d750423db8b1eb942ae710e951ed797f7affc8892b0f1fc122b"
-        + "c7f5d74d"
-        + "f2b9441a"
-        + "42a14695"
-    )
-
-
 def test_check_nonce() -> None:
-    buf = bytearray.fromhex(
-        "01000000"
-        + "81cd02ab7e569e8bcd9317e2fe99f2de44d49ab2b8851ba4a308000000000000"
-        + "e320b6c2fffc8d750423db8b1eb942ae710e951ed797f7affc8892b0f1fc122b"
-        + "c7f5d74d"
-        + "f2b9441a"
-        + "42a14695"
-    )
+    buf = TEST_BLOCK_BIN[:]
     block = BlockHeader.from_buffer(buf)
     # Check a large, but limited range of values.
     for i in range(2_504_400_000, 2_504_445_000):
