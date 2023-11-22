@@ -1,13 +1,12 @@
+from itertools import starmap
+from operator import eq
 import pytest
 
 from src.secp256k1 import G, Point, jacobi, tonelli
 
 
 def test_point_add() -> None:
-    p = Point(
-        0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798,
-        0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8,
-    )
+    p = G
     p2 = p + p
     p3 = p2 + p
     p5 = p2 + p3
@@ -60,13 +59,11 @@ def test_point_add() -> None:
             0x995E555C8AABD263FD238833A12188B8A5FFBEB480BA0E3E6EC481A8991472,
         ),
     ]
-    for point, res in zip(points, res):
-        assert point.affine() == res
+    assert all(map(lambda x, y: x.affine() == y, points, res))
 
 
 def test_point_mul() -> None:
-    p = Point._make(G)
-    assert (p * 2).affine() == (
+    assert (G * 2).affine() == (
         0xC6047F9441ED7D6D3045406E95C07CD85C778E4B8CEF3CA7ABAC09B95C709EE5,
         0x1AE168FEA63DC339A3C58419466CEAEEF7F632653266D0E1236431A950CFE52A,
     )
