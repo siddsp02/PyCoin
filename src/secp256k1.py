@@ -121,40 +121,29 @@ class Point(NamedTuple):
             - https://en.wikibooks.org/wiki/Cryptography/Prime_Curve/Jacobian_Coordinates
             - https://github.com/bitcoin/bitcoin/tree/master/test/functional
         """
-        if self == (0, 1, 0):  # Point at infinity.
+        if self == INFINITY:
             return other
         if self == other:
-            (x, y, z) = self
-            if y == 0:
-                return type(self)(0, 1, 0)
-            y_2 = y*y % P
-            y_4 = y_2*y_2 % P
-            x_2 = x*x % P
-            s = 4*x*y_2 % P
-            m = (3*x_2) % P
-            x3 = (m*m - 2*s) % P
-            y3 = (m * (s-x3) - 8*y_4) % P
-            z3 = 2*y*z % P
-        else:
-            (x1, y1, z1) = self
-            (x2, y2, z2) = other
-            z1_2 = z1*z1 % P
-            z2_2 = z2*z2 % P
-            u1 = x1*z2_2 % P
-            u2 = x2*z1_2 % P
-            s1 = y1*z2*z2_2 % P
-            s2 = y2*z1*z1_2 % P
-            h = (u2-u1) % P
-            t = 2*h % P
-            i = t*t % P
-            j = h*i % P
-            r = 2 * (s2-s1) % P
-            v = u1*i % P
-            x3 = (r*r % P - j - 2*v) % P
-            y3 = (r*(v-x3) - 2*s1*j) % P
-            zs = (z1+z2) % P
-            zs_2 = zs*zs % P
-            z3 = (zs_2-z1_2-z2_2) * h % P
+            return self.double()
+        (x1, y1, z1) = self
+        (x2, y2, z2) = other
+        z1_2 = z1*z1 % P
+        z2_2 = z2*z2 % P
+        u1 = x1*z2_2 % P
+        u2 = x2*z1_2 % P
+        s1 = y1*z2*z2_2 % P
+        s2 = y2*z1*z1_2 % P
+        h = (u2-u1) % P
+        t = 2*h % P
+        i = t*t % P
+        j = h*i % P
+        r = 2 * (s2-s1) % P
+        v = u1*i % P
+        x3 = (r*r % P - j - 2*v) % P
+        y3 = (r*(v-x3) - 2*s1*j) % P
+        zs = (z1+z2) % P
+        zs_2 = zs*zs % P
+        z3 = (zs_2-z1_2-z2_2) * h % P
         return type(self)(x3, y3, z3)
 
     __radd__ = __add__
