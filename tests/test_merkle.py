@@ -1,5 +1,7 @@
 from typing import NamedTuple
 
+import pytest
+
 from src.merkle import hash_pair, hash_tree
 
 
@@ -93,10 +95,9 @@ BLOCKS = [
 ]
 
 
-def test_hash_tree() -> None:
-    for txs, txhash in BLOCKS:
-        txs_bin = map(bytes.fromhex, txs)
-        assert hash_tree(txs_bin).hex() == txhash
+@pytest.mark.parametrize("txs, root", BLOCKS)
+def test_hash_tree_(txs: list[str], root: str) -> None:
+    assert hash_tree(map(bytes.fromhex, txs)).hex() == root
 
 
 def test_hash_pair() -> None:
