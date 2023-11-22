@@ -14,6 +14,7 @@ purposes.
 
 from __future__ import annotations
 
+import doctest
 import struct
 from typing import NamedTuple, Self
 
@@ -181,16 +182,24 @@ class Point(NamedTuple):
 
 def jacobi(n: int, k: int) -> int:
     """Calculate the jacobi symbol of n and k, where k is an odd integer.
+    
+    Examples:
+    >>> jacobi(1, 1)
+    1
+    >>> jacobi(1, 5)
+    1
+    >>> jacobi(7, 15)
+    -1
 
     References:
         - https://en.wikipedia.org/wiki/Jacobi_symbol
     """
     assert k > 0 and k & 1
     n, t = n % k, 1
-    while n != 0:
+    while n:
         while n % 2 == 0:
             n, r = n >> 1, k % 8
-            if r == 3 or r == 5:
+            if r in {3, 5}:
                 t = -t
         n, k = k, n
         if n % 4 == 3 and k % 4 == 3:
@@ -254,3 +263,7 @@ G = Point(
     0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798,
     0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8,
 )
+
+
+if __name__ == "__main__":
+    doctest.testmod()
